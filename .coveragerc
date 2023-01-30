@@ -1,0 +1,5 @@
+[run]
+source = cars_rasterize
+omit =
+    # Omit tests
+    /tests/*

@@ -1,0 +1,52 @@
+repos:
+- repo: local
+  hooks:
+  - id: isort
+    name: Isort
+    stages: [commit]
+    language: system
+    entry: isort
+    types: [python]
+
+  - id: black
+    name: Black
+    stages: [commit]
+    language: system
+    entry: black
+    types: [python]
+
+  - id: flake8
+    name: Flake8
+    stages: [commit]
+    language: system
+    entry: flake8
+    types: [python]
+
+  - id: pylint
+    name: PyLint
+    stages: [commit]
+    language: system
+    entry: pylint --rcfile=.pylintrc
+    files: \.py$
+
+  - id: mypy
+    name: mypy
+    stages: [commit]
+    language: system
+    entry: mypy
+    files: \.py$
+
+  - id: jupyter-nb-clear-output
+    name: jupyter-nb-clear-output
+    files: \.ipynb$
+    stages: [commit]
+    language: system
+    entry: jupyter nbconvert --ClearOutputPreprocessor.enabled=True --inplace
+
+  - id: doc-build
+    name: Build Documentation
+    stages: [push]
+    entry: sphinx-build -M html docs/source/ docs/build -W --keep-going
+    language: system
+    files: ^(docs/.*|cars_rasterize/.*)$
+    pass_filenames: False
