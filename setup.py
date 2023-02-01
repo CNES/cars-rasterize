@@ -23,10 +23,21 @@ Packaging setup.py for compatibility
 All packaging in setup.cfg
 """
 
+from pybind11.setup_helpers import Pybind11Extension, build_ext
 from setuptools import setup
 
 try:
-    setup()
+    ext_modules = [
+        Pybind11Extension("rasterize", ["cars_rasterize/lib.cpp"]),
+    ]
+
+    setup(
+        ext_modules=ext_modules,
+        # Currently, build_ext only provides an optional "highest supported C++
+        # level" feature, but in the future it may provide more features.
+        cmdclass={"build_ext": build_ext},
+    )
+
 except Exception:
     print(
         "\n\nAn error occurred while building the project, "

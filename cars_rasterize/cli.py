@@ -23,20 +23,26 @@ Console script for cars_rasterize.
 """
 
 import argparse
+import json
 import sys
+
+import pandas
+
+from cars_rasterize import apy
 
 
 def main():
     """Console script for cars_rasterize."""
     parser = argparse.ArgumentParser()
-    parser.add_argument("_", nargs="*")
+    parser.add_argument("cloud")
+    parser.add_argument("infos")
     args = parser.parse_args()
 
-    print("Arguments: " + str(args._))
-    print(
-        "Replace this message by putting your code into "
-        "cars_rasterize.cli.main"
-    )
+    cloud = pandas.read_pickle(args.cloud)
+    with open(args.infos, encoding="utf-8") as json_file:
+        infos = json.load(json_file)
+
+    apy.main(cloud, infos)
     return 0
 
 
