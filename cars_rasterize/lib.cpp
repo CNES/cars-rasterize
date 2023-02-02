@@ -32,21 +32,21 @@ std::vector<size_t> getNeighboringCells(const size_t cellCol,
                                         const size_t radius) 
 {
     
-    std::vector<size_t> neighboringCells;
+  std::vector<size_t> neighboringCells;
 
-    // window of 2 * radius + 1 centered on the current cell coordinates
-    size_t minCol = std::max<size_t>(0, cellCol - radius);
-    size_t minRow = std::max<size_t>(0, cellRow - radius);
-    size_t maxCol = std::min<size_t>(xSize-1, cellCol + radius);
-    size_t maxRow = std::min<size_t>(ySize-1, cellRow + radius);
+  // window of 2 * radius + 1 centered on the current cell coordinates
+  size_t minCol = std::max<size_t>(0, cellCol - radius);
+  size_t minRow = std::max<size_t>(0, cellRow - radius);
+  size_t maxCol = std::min<size_t>(xSize-1, cellCol + radius);
+  size_t maxRow = std::min<size_t>(ySize-1, cellRow + radius);
 
-    for(size_t r = minRow; r <= maxRow; r++){
-      for(size_t c = minCol; c <= maxCol; c++){
-        neighboringCells.push_back( r * xSize + c );
-      }
+  for(size_t r = minRow; r <= maxRow; r++){
+    for(size_t c = minCol; c <= maxCol; c++){
+      neighboringCells.push_back( r * xSize + c );
     }
+  }
 
-    return neighboringCells;
+  return neighboringCells;
 }
 
 float getIdw(const std::vector< CoordsList >& gridToInterpol,
@@ -84,13 +84,15 @@ float getIdw(const std::vector< CoordsList >& gridToInterpol,
 }
 
 std::vector<double> pc_to_dsm(const std::vector<double>& pos,
-			                        const size_t nb_bands, 
+			      const size_t nb_bands, 
                               const size_t nb_points,
-			                        const float xstart, 
+			      const float xstart, 
                               const float ystart, 
-                              const size_t xsize, const size_t ysize,
-			                        const float resolution,
-			                        const bool trace)
+                              const size_t xsize,
+			      const size_t ysize,
+			      const float resolution,
+			      const size_t radius,
+			      const bool trace)
 {
   size_t N = pos.size();
 
@@ -151,7 +153,7 @@ std::vector<double> pc_to_dsm(const std::vector<double>& pos,
 
   }
 
-  const size_t idwRadius = 3;
+  const size_t idwRadius = radius;
 
   // Loop over the grid to interpolate the z for each cell
   for ( size_t k = 0 ; k < outsize ; ++k ) {
@@ -185,8 +187,8 @@ std::vector<double> pc_to_dsm(const std::vector<double>& pos,
 
   //   if (trace) {
   //     std::cout << "pt " << k << ": "
-	// 	<< "x, y, z > " 
-	// 	<< x << ", " << y << ", " << z << std::endl;
+  // 	<< "x, y, z > " 
+  // 	<< x << ", " << y << ", " << z << std::endl;
   //     std::cout << "i, j > " << i << ", " << j << std::endl;
   //   }
 
@@ -212,6 +214,7 @@ py::array py_pc_to_dsm(py::array_t<double, py::array::c_style | py::array::force
 		       size_t xsize,
 		       size_t ysize,
 		       float resolution,
+		       size_t radius,
 		       bool trace)
 {
   // check input dimensions
@@ -235,7 +238,9 @@ py::array py_pc_to_dsm(py::array_t<double, py::array::c_style | py::array::force
 
   // call pure C++ function
   std::vector<double> result = pc_to_dsm(pos, nb_bands, nb_points,
-					 xstart, ystart, xsize, ysize, resolution,
+					 xstart, ystart, xsize, ysize,
+					 resolution,
+					 radius,
 					 trace);
 
   ssize_t             ndim    = 2;
@@ -245,13 +250,13 @@ py::array py_pc_to_dsm(py::array_t<double, py::array::c_style | py::array::force
   // return 2-D NumPy array, I think here it is ok since the expected argument is
   // a pointer so there is no copy
   return py::array(py::buffer_info(
-    result.data(),                           /* data as contiguous array  */
-    sizeof(double),                          /* size of one scalar        */
-    py::format_descriptor<double>::format(), /* data type                 */
-    ndim,                                    /* number of dimensions      */
-    shape,                                   /* shape of the matrix       */
-    strides                                  /* strides for each axis     */
-  ));
+				   result.data(),                           /* data as contiguous array  */
+				   sizeof(double),                          /* size of one scalar        */
+				   py::format_descriptor<double>::format(), /* data type                 */
+				   ndim,                                    /* number of dimensions      */
+				   shape,                                   /* shape of the matrix       */
+				   strides                                  /* strides for each axis     */
+				   ));
 }
 
 // wrap as Python module
