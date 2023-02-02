@@ -83,33 +83,34 @@ float getIdw(const std::vector< CoordsList >& gridToInterpol,
 
 }
 
-std::vector<double> pc_to_dsm(const std::vector<double>& pos,
-			      const size_t nb_bands, 
-                              const size_t nb_points,
-			      const float xstart, 
-                              const float ystart, 
-                              const size_t xsize,
-			      const size_t ysize,
-			      const float resolution,
-			      const size_t radius,
-			      const bool trace)
+std::vector<double> pointCloudToDSM(const std::vector<double>& pos,
+				    const size_t nbBands, 
+				    const size_t nbPoints,
+				    const float xStart, 
+				    const float yStart, 
+				    const size_t xSize,
+				    const size_t ySize,
+				    const float resolution,
+				    const size_t radius,
+				    const bool trace)
 {
   size_t N = pos.size();
 
   if (trace) {
     std::cout << "vector size: " << N << std::endl;
-    std::cout << "nb bands (excepted (x,y)): " << nb_bands << std::endl;
-    std::cout << "nb points: " << nb_points << std::endl;
+    std::cout << "nb bands (excepted (x,y)): " << nbBands << std::endl;
+    std::cout << "nb points: " << nbPoints << std::endl;
     std::cout << "dstwin (xoff yoff xsize ysize): (" 
-	      << xstart << " " << ystart << " "
-	      << xsize << " " << ysize << ")" << std::endl;
+	      << xStart << " " << yStart << " "
+	      << xSize << " " << ySize << ")" << std::endl;
     std::cout << "resolution: " << resolution << std::endl;
   }
-  const size_t outsize = xsize*ysize;
-  std::vector<double> output(outsize);
 
-  size_t cellDCol = xsize / 2;
-  size_t cellDRow = ysize / 2;
+  const size_t outSize = xSize*ySize;
+  std::vector<double> output(outSize);
+
+  size_t cellDCol = xSize / 2;
+  size_t cellDRow = ySize / 2;
 
   // All bands
   // data_valid  0            
@@ -129,25 +130,25 @@ std::vector<double> pc_to_dsm(const std::vector<double>& pos,
   // First attempt idw
   // Second attempt idw weighted with ambiguity
   // For each target pixel, we store a list of fractionnal Z coordinates
-  std::vector< CoordsList > gridToInterpol(outsize);
+  std::vector< CoordsList > gridToInterpol(outSize);
   float x, y, z, confidence, col, row;
   size_t cellCol, cellRow, rowByCol;
 
-  for ( size_t k = 0 ; k < nb_points ; ++k ) {
+  for ( size_t k = 0 ; k < nbPoints ; ++k ) {
     
-    x = pos[(1*nb_points)+k];
-    y = pos[(2*nb_points)+k];
-    z = pos[(3*nb_points)+k];
-    confidence = pos[(12*nb_points)+k];
+    x = pos[(1*nbPoints)+k];
+    y = pos[(2*nbPoints)+k];
+    z = pos[(3*nbPoints)+k];
+    confidence = pos[(12*nbPoints)+k];
 
-    col = (x - xstart) / resolution;
-    row = (ystart - y) / resolution;
+    col = (x - xStart) / resolution;
+    row = (yStart - y) / resolution;
 
     cellCol = std::lround(col);
     cellRow = std::lround(row);
 
-    if ((cellCol >= 0) && (cellCol < xsize) && (cellRow >= 0) && (cellRow < ysize)) {
-      rowByCol= cellCol + cellRow * xsize;
+    if ((cellCol >= 0) && (cellCol < xSize) && (cellRow >= 0) && (cellRow < ySize)) {
+      rowByCol= cellCol + cellRow * xSize;
       gridToInterpol[rowByCol].push_back(Coords{col, row, z, confidence});
     }
 
@@ -156,16 +157,16 @@ std::vector<double> pc_to_dsm(const std::vector<double>& pos,
   const size_t idwRadius = radius;
 
   // Loop over the grid to interpolate the z for each cell
-  for ( size_t k = 0 ; k < outsize ; ++k ) {
+  for ( size_t k = 0 ; k < outSize ; ++k ) {
 
-    cellCol = k % xsize;
-    cellRow = k / xsize;
+    cellCol = k % xSize;
+    cellRow = k / xSize;
 
     // Get neighboring cells with radius defined by the user
     auto neighbors = getNeighboringCells(cellCol,
                                          cellRow,
-                                         xsize,
-                                         ysize,
+                                         xSize,
+                                         ySize,
                                          idwRadius);
     
     // Get idw value
@@ -173,30 +174,9 @@ std::vector<double> pc_to_dsm(const std::vector<double>& pos,
                        neighbors,
                        cellCol,
                        cellRow,
-                       xsize,
-                       ysize);
+                       xSize,
+                       ySize);
   }
-
-  // for ( size_t k = 0 ; k < nb_points ; ++k ) {
-  //   const float x = pos[(1*nb_points)+k];
-  //   const float y = pos[(2*nb_points)+k];
-  //   const float z = pos[(3*nb_points)+k];
-
-  //   const ssize_t i = std::lround((x - xstart) / resolution);
-  //   const ssize_t j = std::lround((ystart - y) / resolution);
-
-  //   if (trace) {
-  //     std::cout << "pt " << k << ": "
-  // 	<< "x, y, z > " 
-  // 	<< x << ", " << y << ", " << z << std::endl;
-  //     std::cout << "i, j > " << i << ", " << j << std::endl;
-  //   }
-
-  //   if ((i >= 0) && (i < xsize) && (j >= 0) && (j < ysize)) {
-  //     const size_t ij = i+j*xsize;
-  //     output[ij] = z;
-  //   }
-  // }
 
   return output;
 }
@@ -208,14 +188,14 @@ std::vector<double> pc_to_dsm(const std::vector<double>& pos,
 namespace py = pybind11;
 
 // wrap C++ function with NumPy array IO
-py::array py_pc_to_dsm(py::array_t<double, py::array::c_style | py::array::forcecast> array,
-		       float xstart,
-		       float ystart,
-		       size_t xsize,
-		       size_t ysize,
-		       float resolution,
-		       size_t radius,
-		       bool trace)
+py::array pyPointCloudToDSM(py::array_t<double, py::array::c_style | py::array::forcecast> array,
+			    float xStart,
+			    float yStart,
+			    size_t xSize,
+			    size_t ySize,
+			    float resolution,
+			    size_t radius,
+			    bool trace)
 {
   // check input dimensions
   if ( array.ndim()     != 2 )
@@ -229,23 +209,24 @@ py::array py_pc_to_dsm(py::array_t<double, py::array::c_style | py::array::force
   // to cython memory view
   // https://stackoverflow.com/questions/54793539/pybind11-modify-numpy-array-from-c
   // It seems that passing the py::array by reference should do the job if
-  // there is not conflicting type, however the function pc_to_dsm needs a double * ptr as
+  // there is not conflicting type, however the function pointCloudToDSM needs a double * ptr as
   // input instead of a std::vector.
   std::memcpy(pos.data(),array.data(),array.size()*sizeof(double));
 
-  size_t nb_bands = array.shape()[0]-2;
-  size_t nb_points = array.shape()[1];
+  size_t nbBands = array.shape()[0]-2;
+  size_t nbPoints = array.shape()[1];
 
   // call pure C++ function
-  std::vector<double> result = pc_to_dsm(pos, nb_bands, nb_points,
-					 xstart, ystart, xsize, ysize,
-					 resolution,
-					 radius,
-					 trace);
+  std::vector<double> result = pointCloudToDSM(pos, nbBands, nbPoints,
+					       xStart, yStart,
+					       xSize, ySize,
+					       resolution,
+					       radius,
+					       trace);
 
   ssize_t             ndim    = 2;
-  std::vector<size_t> shape   = { xsize, ysize };
-  std::vector<size_t> strides = { sizeof(double)*ysize, sizeof(double) };
+  std::vector<size_t> shape   = { xSize, ySize };
+  std::vector<size_t> strides = { sizeof(double)*ySize, sizeof(double) };
 
   // return 2-D NumPy array, I think here it is ok since the expected argument is
   // a pointer so there is no copy
@@ -264,5 +245,5 @@ PYBIND11_MODULE(rasterize, m)
 {
   m.doc() = "rasterize";
 
-  m.def("pc_to_dsm", &py_pc_to_dsm, "Convert point cloud to digital surface model");
+  m.def("pc_to_dsm", &pyPointCloudToDSM, "Convert point cloud to digital surface model");
 }
