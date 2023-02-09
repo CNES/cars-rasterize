@@ -41,11 +41,23 @@ def main(cloud, infos):
     xsize = infos["xsize"]
     ysize = infos["ysize"]
     radius = infos["radius"]
+    sigma = -1
+    if infos["sigma"]:
+        sigma = infos["sigma"]
+
     pointcloud = np.vstack(layers)
 
     # pylint: disable=c-extension-no-member
     dsm = rasterize.pc_to_dsm(
-        pointcloud, xstart, ystart, xsize, ysize, resolution, int(radius), False
+        pointcloud,
+        xstart,
+        ystart,
+        xsize,
+        ysize,
+        resolution,
+        int(radius),
+        sigma,
+        False,
     )
 
     transform = Affine.translation(xstart, ystart)

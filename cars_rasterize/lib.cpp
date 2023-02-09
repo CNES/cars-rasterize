@@ -25,23 +25,23 @@ float distance( const Coords& coords1,
                (coords1[1] - coords2[1]) * (coords1[1] - coords2[1]) );
 }
 
-std::vector<size_t> getNeighboringCells(const size_t cellCol,
-                                        const size_t cellRow,
-                                        const size_t xSize,
-                                        const size_t ySize,
-                                        const size_t radius) 
+std::vector<size_t> getNeighboringCells(const long int cellCol,
+                                        const long int cellRow,
+                                        const long int xSize,
+                                        const long int ySize,
+                                        const long int radius) 
 {
     
   std::vector<size_t> neighboringCells;
 
   // window of 2 * radius + 1 centered on the current cell coordinates
-  size_t minCol = std::max<size_t>(0, cellCol - radius);
-  size_t minRow = std::max<size_t>(0, cellRow - radius);
-  size_t maxCol = std::min<size_t>(xSize-1, cellCol + radius);
-  size_t maxRow = std::min<size_t>(ySize-1, cellRow + radius);
+  long int minCol = std::max<long int>(0, cellCol - radius);
+  long int minRow = std::max<long int>(0, cellRow - radius);
+  long int maxCol = std::min<long int>(xSize-1, cellCol + radius);
+  long int maxRow = std::min<long int>(ySize-1, cellRow + radius);
 
-  for(size_t r = minRow; r <= maxRow; r++){
-    for(size_t c = minCol; c <= maxCol; c++){
+  for(long int r = minRow; r <= maxRow; r++){
+    for(long int c = minCol; c <= maxCol; c++){
       neighboringCells.push_back( r * xSize + c );
     }
   }
@@ -75,6 +75,57 @@ float getIdw(const std::vector< CoordsList >& gridToInterpol,
     }
   }
 
+  
+
+  if(atLeastOne){
+    return sumNumerator / sumDenominator;
+  } else {
+    return 0.f;
+  }
+
+}
+
+float getGaussian(const std::vector< CoordsList >& gridToInterpol,
+                  const std::vector<size_t>& neighbors,
+                  const size_t cellCol,
+                  const size_t cellRow,
+                  const size_t xSize,
+                  const size_t ySize,
+                  const float sigma) {
+
+  // We take the coordinates at the center of the pixel
+  Coords cellCoordsCenter = Coords{ static_cast<float>(cellCol + 0.5f),
+                                    static_cast<float>(cellRow + 0.5f),
+                                    0.f, 0.f };
+  
+  float sumNumerator = 0.f;
+  float sumDenominator = 0.f;
+  float dist;
+  bool atLeastOne = false;
+  float weight;
+
+  bool 
+
+  if(sigma >= 0){
+    for(const auto neigh : neighbors){
+      for(const auto& coords: gridToInterpol[neigh]){
+        dist = distance(cellCoordsCenter, coords);
+        weight = exp( (- dist * dist) / (2 * sigma * sigma) );
+        sumNumerator += (coords[2] * coords[3])  * weight;
+        sumDenominator += coords[3] * weight;
+        atLeastOne = true;
+      }
+    }
+  } else {
+    for(const auto neigh : neighbors){
+      for(const auto& coords: gridToInterpol[neigh]){
+        sumNumerator += (coords[2] * coords[3]);
+        sumDenominator += coords[3];
+        atLeastOne = true;
+      }
+  }
+
+
   if(atLeastOne){
     return sumNumerator / sumDenominator;
   } else {
@@ -92,6 +143,7 @@ std::vector<double> pointCloudToDSM(const std::vector<double>& pos,
 				    const size_t ySize,
 				    const float resolution,
 				    const size_t radius,
+            const float sigma,
 				    const bool trace)
 {
   size_t N = pos.size();
@@ -144,8 +196,8 @@ std::vector<double> pointCloudToDSM(const std::vector<double>& pos,
     col = (x - xStart) / resolution;
     row = (yStart - y) / resolution;
 
-    cellCol = std::lround(col);
-    cellRow = std::lround(row);
+    cellCol = floor(col);
+    cellRow = floor(row);
 
     if ((cellCol >= 0) && (cellCol < xSize) && (cellRow >= 0) && (cellRow < ySize)) {
       rowByCol= cellCol + cellRow * xSize;
@@ -169,13 +221,25 @@ std::vector<double> pointCloudToDSM(const std::vector<double>& pos,
                                          ySize,
                                          idwRadius);
     
+    
+    
+    // Gaussian interpolation
+    output[k] = getGaussian(gridToInterpol,
+                            neighbors,
+                            cellCol,
+                            cellRow,
+                            xSize,
+                            ySize,
+                            sigma);
+
+
     // Get idw value
-    output[k] = getIdw(gridToInterpol,
-                       neighbors,
-                       cellCol,
-                       cellRow,
-                       xSize,
-                       ySize);
+    // output[k] = getIdw(gridToInterpol,
+    //                    neighbors,
+    //                    cellCol,
+    //                    cellRow,
+    //                    xSize,
+    //                    ySize);
   }
 
   return output;
@@ -195,6 +259,7 @@ py::array pyPointCloudToDSM(py::array_t<double, py::array::c_style | py::array::
 			    size_t ySize,
 			    float resolution,
 			    size_t radius,
+          float sigma,
 			    bool trace)
 {
   // check input dimensions
@@ -218,11 +283,12 @@ py::array pyPointCloudToDSM(py::array_t<double, py::array::c_style | py::array::
 
   // call pure C++ function
   std::vector<double> result = pointCloudToDSM(pos, nbBands, nbPoints,
-					       xStart, yStart,
-					       xSize, ySize,
-					       resolution,
-					       radius,
-					       trace);
+					                                     xStart, yStart,
+					                                     xSize, ySize,
+					                                     resolution,
+					                                     radius,
+                                               sigma,
+					                                     trace);
 
   ssize_t             ndim    = 2;
   std::vector<size_t> shape   = { xSize, ySize };
