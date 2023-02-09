@@ -58,6 +58,7 @@ def main(cloud, infos):
         int(radius),
         sigma,
         False,
+        False,
     )
 
     transform = Affine.translation(xstart, ystart)

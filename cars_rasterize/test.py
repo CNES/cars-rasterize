@@ -93,6 +93,7 @@ if __name__ == "__main__":
         RESOLUTION,
         RADIUS,
         SIGMA,
+        False,
         True,
     )
 

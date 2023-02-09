@@ -100,13 +100,13 @@ float getGaussian(const std::vector< CoordsList >& gridToInterpol,
   
   float sumNumerator = 0.f;
   float sumDenominator = 0.f;
-  float dist;
   bool atLeastOne = false;
   float weight;
 
-  bool 
-
   if(sigma >= 0){
+
+    float dist;
+
     for(const auto neigh : neighbors){
       for(const auto& coords: gridToInterpol[neigh]){
         dist = distance(cellCoordsCenter, coords);
@@ -123,6 +123,7 @@ float getGaussian(const std::vector< CoordsList >& gridToInterpol,
         sumDenominator += coords[3];
         atLeastOne = true;
       }
+    }
   }
 
 
@@ -144,6 +145,7 @@ std::vector<double> pointCloudToDSM(const std::vector<double>& pos,
 				    const float resolution,
 				    const size_t radius,
             const float sigma,
+            const bool considerConfidence,
 				    const bool trace)
 {
   size_t N = pos.size();
@@ -160,9 +162,6 @@ std::vector<double> pointCloudToDSM(const std::vector<double>& pos,
 
   const size_t outSize = xSize*ySize;
   std::vector<double> output(outSize);
-
-  size_t cellDCol = xSize / 2;
-  size_t cellDRow = ySize / 2;
 
   // All bands
   // data_valid  0            
@@ -191,7 +190,12 @@ std::vector<double> pointCloudToDSM(const std::vector<double>& pos,
     x = pos[(1*nbPoints)+k];
     y = pos[(2*nbPoints)+k];
     z = pos[(3*nbPoints)+k];
-    confidence = pos[(12*nbPoints)+k];
+
+    if(considerConfidence){
+      confidence = pos[(12*nbPoints)+k];
+    } else {
+      confidence = 1;
+    }
 
     col = (x - xStart) / resolution;
     row = (yStart - y) / resolution;
@@ -260,6 +264,7 @@ py::array pyPointCloudToDSM(py::array_t<double, py::array::c_style | py::array::
 			    float resolution,
 			    size_t radius,
           float sigma,
+          bool considerConfidence,
 			    bool trace)
 {
   // check input dimensions
@@ -288,6 +293,7 @@ py::array pyPointCloudToDSM(py::array_t<double, py::array::c_style | py::array::
 					                                     resolution,
 					                                     radius,
                                                sigma,
+                                               considerConfidence,
 					                                     trace);
 
   ssize_t             ndim    = 2;
