@@ -144,8 +144,8 @@ std::vector<double> pointCloudToDSM(const std::vector<double>& pos,
 				    const size_t ySize,
 				    const float resolution,
 				    const size_t radius,
-            const float sigma,
-            const bool considerConfidence,
+				    const float sigma,
+				    const bool considerConfidence,
 				    const bool trace)
 {
   size_t N = pos.size();
@@ -263,8 +263,8 @@ py::array pyPointCloudToDSM(py::array_t<double, py::array::c_style | py::array::
 			    size_t ySize,
 			    float resolution,
 			    size_t radius,
-          float sigma,
-          bool considerConfidence,
+			    float sigma,
+			    bool considerConfidence,
 			    bool trace)
 {
   // check input dimensions
@@ -288,13 +288,13 @@ py::array pyPointCloudToDSM(py::array_t<double, py::array::c_style | py::array::
 
   // call pure C++ function
   std::vector<double> result = pointCloudToDSM(pos, nbBands, nbPoints,
-					                                     xStart, yStart,
-					                                     xSize, ySize,
-					                                     resolution,
-					                                     radius,
+					       xStart, yStart,
+					       xSize, ySize,
+					       resolution,
+					       radius,
                                                sigma,
                                                considerConfidence,
-					                                     trace);
+					       trace);
 
   ssize_t             ndim    = 2;
   std::vector<size_t> shape   = { xSize, ySize };
