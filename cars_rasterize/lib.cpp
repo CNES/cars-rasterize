@@ -13,7 +13,7 @@
 // pure C++ code
 // -------------
 
-using Coords = std::array<float, 4>;
+using Coords = std::array<double, 4>;
 using CoordsList = std::list<Coords>;
 const float epsilon = std::numeric_limits<float>::epsilon();
 
@@ -75,8 +75,6 @@ float getIdw(const std::vector< CoordsList >& gridToInterpol,
     }
   }
 
-  
-
   if(atLeastOne){
     return sumNumerator / sumDenominator;
   } else {
@@ -91,7 +89,10 @@ float getGaussian(const std::vector< CoordsList >& gridToInterpol,
                   const size_t cellRow,
                   const size_t xSize,
                   const size_t ySize,
-                  const float sigma) {
+                  const float sigma,
+		  const long int radius,
+		  const float resolution)
+{
 
   // We take the coordinates at the center of the pixel
   Coords cellCoordsCenter = Coords{ static_cast<float>(cellCol + 0.5f),
@@ -102,30 +103,20 @@ float getGaussian(const std::vector< CoordsList >& gridToInterpol,
   float sumDenominator = 0.f;
   bool atLeastOne = false;
   float weight;
+  float dist;
 
-  if(sigma >= 0){
-
-    float dist;
-
-    for(const auto neigh : neighbors){
-      for(const auto& coords: gridToInterpol[neigh]){
-        dist = distance(cellCoordsCenter, coords);
-        weight = exp( (- dist * dist) / (2 * sigma * sigma) );
-        sumNumerator += (coords[2] * coords[3])  * weight;
-        sumDenominator += coords[3] * weight;
-        atLeastOne = true;
-      }
-    }
-  } else {
-    for(const auto neigh : neighbors){
-      for(const auto& coords: gridToInterpol[neigh]){
-        sumNumerator += (coords[2] * coords[3]);
-        sumDenominator += coords[3];
-        atLeastOne = true;
+  for(const auto neigh : neighbors){
+    for(const auto& coords: gridToInterpol[neigh]){
+      dist = distance(cellCoordsCenter, coords);
+      if (dist < 0.5 + radius) {
+	dist *= resolution;
+	weight = exp( (- dist * dist) / (2 * sigma * sigma) );
+	sumNumerator += (coords[2] * coords[3])  * weight;
+	sumDenominator += coords[3] * weight;
+	atLeastOne = true;
       }
     }
   }
-
 
   if(atLeastOne){
     return sumNumerator / sumDenominator;
@@ -149,17 +140,6 @@ std::vector<double> pointCloudToDSM(const std::vector<double>& pos,
 				    const bool trace)
 {
   size_t N = pos.size();
-
-  if (trace) {
-    std::cout << "vector size: " << N << std::endl;
-    std::cout << "nb bands (excepted (x,y)): " << nbBands << std::endl;
-    std::cout << "nb points: " << nbPoints << std::endl;
-    std::cout << "dstwin (xoff yoff xsize ysize): (" 
-	      << xStart << " " << yStart << " "
-	      << xSize << " " << ySize << ")" << std::endl;
-    std::cout << "resolution: " << resolution << std::endl;
-  }
-
   const size_t outSize = xSize*ySize;
   std::vector<double> output(outSize);
 
@@ -182,7 +162,7 @@ std::vector<double> pointCloudToDSM(const std::vector<double>& pos,
   // Second attempt idw weighted with ambiguity
   // For each target pixel, we store a list of fractionnal Z coordinates
   std::vector< CoordsList > gridToInterpol(outSize);
-  float x, y, z, confidence, col, row;
+  double x, y, z, confidence, col, row;
   size_t cellCol, cellRow, rowByCol;
 
   for ( size_t k = 0 ; k < nbPoints ; ++k ) {
@@ -234,7 +214,9 @@ std::vector<double> pointCloudToDSM(const std::vector<double>& pos,
                             cellRow,
                             xSize,
                             ySize,
-                            sigma);
+                            sigma,
+			    idwRadius,
+			    resolution);
 
 
     // Get idw value
