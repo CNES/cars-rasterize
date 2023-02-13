@@ -41,9 +41,10 @@ def main(cloud, infos):
     xsize = infos["xsize"]
     ysize = infos["ysize"]
     radius = infos["radius"]
-    sigma = -1
     if infos["sigma"]:
         sigma = infos["sigma"]
+    else:
+        sigma = resolution
 
     pointcloud = np.vstack(layers)
 
