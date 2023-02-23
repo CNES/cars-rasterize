@@ -22,6 +22,10 @@
 Python api for cars_rasterize.
 """
 
+import json
+from pathlib import Path
+
+import laspy
 import numpy as np
 import rasterio as rio
 from rasterio.profiles import DefaultGTiffProfile
@@ -30,44 +34,63 @@ from rasterio.transform import Affine
 import rasterize
 
 
-def main(cloud, infos):
+def main(cloud_in, dsm_out, resolution=0.5, radius=1, sigma=None, roi=None):
     """
     Convert point cloud to dsm
     """
-    layers = [cloud[key].to_numpy() for key in cloud]
-    resolution = infos["resolution"]
-    xstart = infos["xstart"]
-    ystart = infos["ystart"]
-    xsize = infos["xsize"]
-    ysize = infos["ysize"]
-    radius = infos["radius"]
-    if infos["sigma"]:
-        sigma = infos["sigma"]
-    else:
-        sigma = resolution
+    with laspy.open(cloud_in) as creader:
+        las = creader.read()
+        pointcloud = np.vstack((las.x, las.y, las.z))
 
-    pointcloud = np.vstack(layers)
+    if roi is None:
+        attrs = str(Path(cloud_in).with_suffix("")) + "_attrs.json"
+        if Path(attrs).exists():
+            with open(attrs, "r", encoding="utf-8") as attrs_reader:
+                roi = json.load(attrs_reader)["attributes"]
+        else:
+            roi = {
+                "xmin": resolution
+                * ((np.amin(las.x) - resolution / 2) // resolution),
+                "ymax": resolution
+                * ((np.amax(las.y) + resolution / 2) // resolution),
+                "xmax": resolution
+                * ((np.amax(las.x) + resolution / 2) // resolution),
+                "ymin": resolution
+                * ((np.amin(las.y) - resolution / 2) // resolution),
+            }
+
+        roi["xstart"] = roi["xmin"]
+        roi["ystart"] = roi["ymax"]
+        roi["xsize"] = (roi["xmax"] - roi["xmin"]) / resolution
+        roi["ysize"] = (roi["ymax"] - roi["ymin"]) / resolution
+
+    if sigma is None:
+        sigma = resolution
 
     # pylint: disable=c-extension-no-member
     dsm = rasterize.pc_to_dsm(
         pointcloud,
-        xstart,
-        ystart,
-        xsize,
-        ysize,
+        roi["xstart"],
+        roi["ystart"],
+        int(roi["xsize"]),
+        int(roi["ysize"]),
         resolution,
-        int(radius),
+        radius,
         sigma,
-        False,
-        False,
     )
 
-    transform = Affine.translation(xstart, ystart)
+    transform = Affine.translation(roi["xstart"], roi["ystart"])
     transform = transform * Affine.scale(resolution, -resolution)
 
     profile = DefaultGTiffProfile(
-        count=1, dtype=dsm.dtype, width=xsize, height=ysize, transform=transform
+        count=2,
+        dtype=dsm.dtype,
+        width=roi["xsize"],
+        height=roi["ysize"],
+        transform=transform,
+        nodata=np.nan,
     )
 
-    with rio.open("dsm.tif", "w", **profile) as dst:
-        dst.write(dsm, 1)
+    with rio.open(dsm_out, "w", **profile) as dst:
+        dst.write(dsm[..., 0], 1)
+        dst.write(dsm[..., 1], 2)

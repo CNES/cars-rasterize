@@ -23,10 +23,7 @@ Console script for cars_rasterize.
 """
 
 import argparse
-import json
 import sys
-
-import pandas
 
 from cars_rasterize import apy
 
@@ -34,15 +31,37 @@ from cars_rasterize import apy
 def main():
     """Console script for cars_rasterize."""
     parser = argparse.ArgumentParser()
-    parser.add_argument("cloud")
-    parser.add_argument("infos")
+    parser.add_argument("cloud_in")
+    parser.add_argument("dsm_out")
+    parser.add_argument("--resolution", default=0.5, type=float)
+    parser.add_argument("--radius", default=1, type=int)
+    parser.add_argument("--sigma", default=None, type=float)
+    parser.add_argument(
+        "--roi",
+        nargs=4,
+        metavar=("xstart", "ystart", "xsize", "ysize"),
+        default=None,
+        type=float,
+    )
+
     args = parser.parse_args()
+    user_roi = None
+    if args.roi is not None:
+        user_roi = {
+            "startx": args.roi[0],
+            "starty": args.roi[1],
+            "xsize": int(args.roi[2]),
+            "ysize": int(args.roi[3]),
+        }
 
-    cloud = pandas.read_pickle(args.cloud)
-    with open(args.infos, encoding="utf-8") as json_file:
-        infos = json.load(json_file)
-
-    apy.main(cloud, infos)
+    apy.main(
+        args.cloud_in,
+        args.dsm_out,
+        resolution=args.resolution,
+        radius=args.radius,
+        sigma=args.sigma,
+        roi=user_roi,
+    )
     return 0
 
 

@@ -25,6 +25,18 @@ float distance( const Coords& coords1,
                (coords1[1] - coords2[1]) * (coords1[1] - coords2[1]) );
 }
 
+
+float standard_deviation( std::vector<float> vect)
+{
+  double sum = std::accumulate(vect.begin(), vect.end(), 0.0);
+  double mean = sum / vect.size();
+  std::vector<double> diff(vect.size());
+  std::transform(vect.begin(), vect.end(), diff.begin(), [mean](double x) { return x - mean; });
+  double sq_sum = std::inner_product(diff.begin(), diff.end(), diff.begin(), 0.0);
+  return std::sqrt(sq_sum / vect.size());
+}
+
+
 std::vector<size_t> getNeighboringCells(const long int cellCol,
                                         const long int cellRow,
                                         const long int xSize,
@@ -49,81 +61,52 @@ std::vector<size_t> getNeighboringCells(const long int cellCol,
   return neighboringCells;
 }
 
-float getIdw(const std::vector< CoordsList >& gridToInterpol,
-             const std::vector<size_t>& neighbors,
-             const size_t cellCol,
-             const size_t cellRow,
-             const size_t xSize,
-             const size_t ySize) 
-{
-  
-  // We take the coordinates at the center of the pixel
-  Coords cellCoordsCenter = Coords{ static_cast<float>(cellCol + 0.5f),
-                                    static_cast<float>(cellRow + 0.5f),
-                                    0.f, 0.f };
 
-  float sumNumerator = 0.f;
-  float sumDenominator = 0.f;
-  float dist;
-  bool atLeastOne = false;
-  for(const auto neigh : neighbors){
-    for(const auto& coords: gridToInterpol[neigh]){
-      dist = distance(cellCoordsCenter, coords) + epsilon;
-      sumNumerator += (coords[2] * coords[3]) / dist;
-      sumDenominator += coords[3] / dist;
-      atLeastOne = true;
-    }
-  }
-
-  if(atLeastOne){
-    return sumNumerator / sumDenominator;
-  } else {
-    return 0.f;
-  }
-
-}
-
-float getGaussian(const std::vector< CoordsList >& gridToInterpol,
-                  const std::vector<size_t>& neighbors,
-                  const size_t cellCol,
-                  const size_t cellRow,
-                  const size_t xSize,
-                  const size_t ySize,
-                  const float sigma,
-		  const long int radius,
-		  const float resolution)
+std::pair<float, float> getGaussian(const std::vector< CoordsList >& gridToInterpol,
+				    const std::vector<size_t>& neighbors,
+				    const size_t cellCol,
+				    const size_t cellRow,
+				    const size_t xSize,
+				    const size_t ySize,
+				    const float sigma,
+				    const long int radius,
+				    const float resolution)
 {
 
   // We take the coordinates at the center of the pixel
   Coords cellCoordsCenter = Coords{ static_cast<float>(cellCol + 0.5f),
                                     static_cast<float>(cellRow + 0.5f),
-                                    0.f, 0.f };
+                                    0.f, 0.f};
   
   float sumNumerator = 0.f;
   float sumDenominator = 0.f;
-  bool atLeastOne = false;
   float weight;
   float dist;
+  
+  // std::vector<float> heights;
+  std::list < std::pair<float, Coords> > coordsList;
+
+  size_t nbPoints = 0; 
 
   for(const auto neigh : neighbors){
     for(const auto& coords: gridToInterpol[neigh]){
       dist = distance(cellCoordsCenter, coords);
       if (dist < 0.5 + radius) {
-	dist *= resolution;
 	weight = exp( (- dist * dist) / (2 * sigma * sigma) );
-	sumNumerator += (coords[2] * coords[3])  * weight;
-	sumDenominator += coords[3] * weight;
-	atLeastOne = true;
+	sumNumerator += coords[2] * weight;
+	sumDenominator += weight;
+	nbPoints++;
       }
     }
   }
 
-  if(atLeastOne){
-    return sumNumerator / sumDenominator;
-  } else {
-    return 0.f;
-  }
+  if(nbPoints > 0){
+    return std::make_pair(sumNumerator / sumDenominator,
+    			  nbPoints);
 
+  } else {
+    return std::make_pair(std::numeric_limits<double>::quiet_NaN(), 0.f);
+  }
 }
 
 std::vector<double> pointCloudToDSM(const std::vector<double>& pos,
@@ -135,47 +118,22 @@ std::vector<double> pointCloudToDSM(const std::vector<double>& pos,
 				    const size_t ySize,
 				    const float resolution,
 				    const size_t radius,
-				    const float sigma,
-				    const bool considerConfidence,
-				    const bool trace)
+				    const float sigma)
 {
-  size_t N = pos.size();
   const size_t outSize = xSize*ySize;
-  std::vector<double> output(outSize);
+  std::vector<double> output(2*outSize);
+  std::vector<bool> mask(nbPoints);
 
-  // All bands
-  // data_valid  0            
-  // x           1  
-  // y           2
-  // z           3 
-  // msk         4
-  // clr0        5
-  // clr1        6
-  // clr2        7
-  // clr3        8
-  // coord_epi_geom_i   9  
-  // coord_epi_geom_j   10 
-  // idx_im_epi         11
-  // ambiguity_confidence 12
-
-  // First attempt idw
-  // Second attempt idw weighted with ambiguity
   // For each target pixel, we store a list of fractionnal Z coordinates
   std::vector< CoordsList > gridToInterpol(outSize);
-  double x, y, z, confidence, col, row;
+  double x, y, z, col, row;
   size_t cellCol, cellRow, rowByCol;
 
   for ( size_t k = 0 ; k < nbPoints ; ++k ) {
     
-    x = pos[(1*nbPoints)+k];
-    y = pos[(2*nbPoints)+k];
-    z = pos[(3*nbPoints)+k];
-
-    if(considerConfidence){
-      confidence = pos[(12*nbPoints)+k];
-    } else {
-      confidence = 1;
-    }
+    x = pos[k];
+    y = pos[(1*nbPoints)+k];
+    z = pos[(2*nbPoints)+k];
 
     col = (x - xStart) / resolution;
     row = (yStart - y) / resolution;
@@ -185,12 +143,10 @@ std::vector<double> pointCloudToDSM(const std::vector<double>& pos,
 
     if ((cellCol >= 0) && (cellCol < xSize) && (cellRow >= 0) && (cellRow < ySize)) {
       rowByCol= cellCol + cellRow * xSize;
-      gridToInterpol[rowByCol].push_back(Coords{col, row, z, confidence});
+      gridToInterpol[rowByCol].push_back(Coords{col, row, z, static_cast<float> (k)});
     }
 
   }
-
-  const size_t idwRadius = radius;
 
   // Loop over the grid to interpolate the z for each cell
   for ( size_t k = 0 ; k < outSize ; ++k ) {
@@ -203,29 +159,21 @@ std::vector<double> pointCloudToDSM(const std::vector<double>& pos,
                                          cellRow,
                                          xSize,
                                          ySize,
-                                         idwRadius);
-    
-    
+                                         radius);
     
     // Gaussian interpolation
-    output[k] = getGaussian(gridToInterpol,
-                            neighbors,
-                            cellCol,
-                            cellRow,
-                            xSize,
-                            ySize,
-                            sigma,
-			    idwRadius,
-			    resolution);
-
-
-    // Get idw value
-    // output[k] = getIdw(gridToInterpol,
-    //                    neighbors,
-    //                    cellCol,
-    //                    cellRow,
-    //                    xSize,
-    //                    ySize);
+    auto [mean, stdev] = getGaussian(gridToInterpol,
+				     neighbors,
+				     cellCol,
+				     cellRow,
+				     xSize,
+				     ySize,
+				     sigma,
+				     radius,
+				     resolution);
+				     
+    output[2*k+0] = mean;
+    output[2*k+1] = stdev;
   }
 
   return output;
@@ -245,9 +193,7 @@ py::array pyPointCloudToDSM(py::array_t<double, py::array::c_style | py::array::
 			    size_t ySize,
 			    float resolution,
 			    size_t radius,
-			    float sigma,
-			    bool considerConfidence,
-			    bool trace)
+			    float sigma)
 {
   // check input dimensions
   if ( array.ndim()     != 2 )
@@ -274,18 +220,15 @@ py::array pyPointCloudToDSM(py::array_t<double, py::array::c_style | py::array::
 					       xSize, ySize,
 					       resolution,
 					       radius,
-                                               sigma,
-                                               considerConfidence,
-					       trace);
+                                               sigma);
 
-  ssize_t             ndim    = 2;
-  std::vector<size_t> shape   = { xSize, ySize };
-  std::vector<size_t> strides = { sizeof(double)*ySize, sizeof(double) };
+  ssize_t             ndim    = 3;
+  std::vector<size_t> shape   = { xSize, ySize, 2 };
+  std::vector<size_t> strides = { 2*ySize*sizeof(double), 2*sizeof(double), sizeof(double)};
 
   // return 2-D NumPy array, I think here it is ok since the expected argument is
   // a pointer so there is no copy
-  return py::array(py::buffer_info(
-				   result.data(),                           /* data as contiguous array  */
+  return py::array(py::buffer_info(result.data(),                           /* data as contiguous array  */
 				   sizeof(double),                          /* size of one scalar        */
 				   py::format_descriptor<double>::format(), /* data type                 */
 				   ndim,                                    /* number of dimensions      */
