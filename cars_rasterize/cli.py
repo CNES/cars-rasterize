@@ -48,8 +48,8 @@ def main():
     user_roi = None
     if args.roi is not None:
         user_roi = {
-            "startx": args.roi[0],
-            "starty": args.roi[1],
+            "xstart": args.roi[0],
+            "ystart": args.roi[1],
             "xsize": int(args.roi[2]),
             "ysize": int(args.roi[3]),
         }
