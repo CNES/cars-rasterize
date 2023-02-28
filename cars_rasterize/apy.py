@@ -40,7 +40,9 @@ def main(cloud_in, dsm_out, resolution=0.5, radius=1, sigma=None, roi=None):
     """
     with laspy.open(cloud_in) as creader:
         las = creader.read()
-        pointcloud = np.vstack((las.x, las.y, las.z))
+        pointcloud = np.vstack(
+            (las.x, las.y, las.z, las.red, las.green, las.blue)
+        )
 
     if roi is None:
         attrs = str(Path(cloud_in).with_suffix("")) + "_attrs.json"
@@ -68,7 +70,7 @@ def main(cloud_in, dsm_out, resolution=0.5, radius=1, sigma=None, roi=None):
         sigma = resolution
 
     # pylint: disable=c-extension-no-member
-    dsm = rasterize.pc_to_dsm(
+    out, mean, stdev, nb_pts_in_disc, nb_pts_in_cell = rasterize.pc_to_dsm(
         pointcloud,
         roi["xstart"],
         roi["ystart"],
@@ -79,12 +81,14 @@ def main(cloud_in, dsm_out, resolution=0.5, radius=1, sigma=None, roi=None):
         sigma,
     )
 
+    # save all images
+    # out: gaussian interpolation
     transform = Affine.translation(roi["xstart"], roi["ystart"])
     transform = transform * Affine.scale(resolution, -resolution)
 
     profile = DefaultGTiffProfile(
-        count=2,
-        dtype=dsm.dtype,
+        count=out.shape[-1],
+        dtype=out.dtype,
         width=roi["xsize"],
         height=roi["ysize"],
         transform=transform,
@@ -92,5 +96,59 @@ def main(cloud_in, dsm_out, resolution=0.5, radius=1, sigma=None, roi=None):
     )
 
     with rio.open(dsm_out, "w", **profile) as dst:
-        dst.write(dsm[..., 0], 1)
-        dst.write(dsm[..., 1], 2)
+        for band in range(out.shape[-1]):
+            dst.write(out[..., band], band + 1)
+
+    # mean: simple mean
+    profile = DefaultGTiffProfile(
+        count=mean.shape[-1],
+        dtype=mean.dtype,
+        width=roi["xsize"],
+        height=roi["ysize"],
+        transform=transform,
+        nodata=np.nan,
+    )
+
+    with rio.open(dsm_out + "_mean.tif", "w", **profile) as dst:
+        for band in range(mean.shape[-1]):
+            dst.write(mean[..., band], band + 1)
+
+    # stdev: standard deviation
+    profile = DefaultGTiffProfile(
+        count=stdev.shape[-1],
+        dtype=stdev.dtype,
+        width=roi["xsize"],
+        height=roi["ysize"],
+        transform=transform,
+        nodata=np.nan,
+    )
+
+    with rio.open(dsm_out + "_stdev.tif", "w", **profile) as dst:
+        for band in range(stdev.shape[-1]):
+            dst.write(stdev[..., band], band + 1)
+
+    # nb_pts_in_disc: nb points used for interpolation
+    profile = DefaultGTiffProfile(
+        count=1,
+        dtype=nb_pts_in_disc.dtype,
+        width=roi["xsize"],
+        height=roi["ysize"],
+        transform=transform,
+        nodata=0,
+    )
+
+    with rio.open(dsm_out + "_nb_disc.tif", "w", **profile) as dst:
+        dst.write(nb_pts_in_disc, 1)
+
+    # nb_pts_in_cell: nb points in interpolated cell
+    profile = DefaultGTiffProfile(
+        count=1,
+        dtype=nb_pts_in_cell.dtype,
+        width=roi["xsize"],
+        height=roi["ysize"],
+        transform=transform,
+        nodata=0,
+    )
+
+    with rio.open(dsm_out + "_nb_cell.tif", "w", **profile) as dst:
+        dst.write(nb_pts_in_cell, 1)
