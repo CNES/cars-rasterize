@@ -40,9 +40,9 @@ def main(cloud_in, dsm_out, resolution=0.5, radius=1, sigma=None, roi=None):
     """
     with laspy.open(cloud_in) as creader:
         las = creader.read()
-        pointcloud = np.vstack(
-            (las.x, las.y, las.z, las.red, las.green, las.blue)
-        )
+        points = np.vstack((las.x, las.y))
+        values = np.vstack((las.z, las.red, las.green, las.blue))
+        valid = np.ones((1, points.shape[1]))
 
     if roi is None:
         attrs = str(Path(cloud_in).with_suffix("")) + "_attrs.json"
@@ -71,7 +71,9 @@ def main(cloud_in, dsm_out, resolution=0.5, radius=1, sigma=None, roi=None):
 
     # pylint: disable=c-extension-no-member
     out, mean, stdev, nb_pts_in_disc, nb_pts_in_cell = rasterize.pc_to_dsm(
-        pointcloud,
+        points,
+        values,
+        valid,
         roi["xstart"],
         roi["ystart"],
         int(roi["xsize"]),

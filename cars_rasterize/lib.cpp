@@ -15,10 +15,9 @@
 
 using Coords = std::array<double, 3>;
 using CoordsList = std::list<Coords>;
-const float epsilon = std::numeric_limits<float>::epsilon();
 
-float distance( const Coords& coords1, 
-                const Coords& coords2 ) 
+double distance( const Coords& coords1, 
+		 const Coords& coords2 ) 
 {
   // Euclidean square root distance
   return sqrt( (coords1[0] - coords2[0]) * (coords1[0] - coords2[0]) +
@@ -26,7 +25,7 @@ float distance( const Coords& coords1,
 }
 
 
-std::pair<float, float> vector_statistics(std::vector<float> vect)
+std::pair<double, double> vector_statistics(const std::vector<double> vect)
 {
   double sum = std::accumulate(vect.begin(), vect.end(), 0.0);
   double mean = sum / vect.size();
@@ -38,10 +37,10 @@ std::pair<float, float> vector_statistics(std::vector<float> vect)
 
 
 std::vector<size_t> getNeighboringCells(const long int cellCol,
-					  const long int cellRow,
-					  const long int xSize,
-					  const long int ySize,
-					  const long int radius) 
+					const long int cellRow,
+					const long int xSize,
+					const long int ySize,
+					const long int radius)
 {
     
   std::vector<size_t> neighboringCells;
@@ -62,50 +61,51 @@ std::vector<size_t> getNeighboringCells(const long int cellCol,
 }
 
 
-typedef std::tuple<std::vector<float>, // gaussian interpolation
-		   std::vector<float>, // mean
-		   std::vector<float>, // standard deviation
+typedef std::tuple<std::vector<double>, // gaussian interpolation
+		   std::vector<double>, // mean
+		   std::vector<double>, // standard deviation
 		   uint16_t, // nb points in discus
 		   uint16_t  // nb points in cell
 		   > gaussianType;
 
-gaussianType getGaussian(const std::vector<double>& pos,
+gaussianType getGaussian(const std::vector<double>& valuesVector,
+			 const std::vector<int>& validVector,
 			 const std::vector< CoordsList >& gridToInterpol,
 			 const std::vector<size_t>& neighbors,
 			 const size_t cellCol,
 			 const size_t cellRow,
 			 const size_t xSize,
 			 const size_t ySize,
-			 const float sigma,
+			 const double sigma,
 			 const long int radius,
-			 const float resolution,
+			 const double resolution,
 			 const size_t nbBands,
 			 const size_t nbPoints)
 {
 
   // We take the coordinates at the center of the pixel
-  Coords cellCoordsCenter = Coords{ static_cast<float>(cellCol + 0.5f),
-                                    static_cast<float>(cellRow + 0.5f),
+  Coords cellCoordsCenter = Coords{ static_cast<double>(cellCol + 0.5f),
+                                    static_cast<double>(cellRow + 0.5f),
                                     -1.f };
-  std::list < std::pair<float, Coords> > coordsList;
+  std::list < std::pair<double, Coords> > coordsList;
   uint16_t nbPointsInCell = 0;
   std::vector<size_t> indexes;
-  std::vector<float> weights; 
-  std::vector<float> gaussian_interp(nbBands, std::numeric_limits<double>::quiet_NaN());
-  std::vector<float> mean(nbBands, std::numeric_limits<double>::quiet_NaN());
-  std::vector<float> stdev(nbBands, 0);
+  std::vector<double> weights; 
+  std::vector<double> gaussian_interp(nbBands, std::numeric_limits<double>::quiet_NaN());
+  std::vector<double> mean(nbBands, std::numeric_limits<double>::quiet_NaN());
+  std::vector<double> stdev(nbBands, std::numeric_limits<double>::quiet_NaN());
 
   // allows retrocompatibility with cars: but it is a bug
-  float dist_min = std::numeric_limits<float>::max();
+  double dist_min = std::numeric_limits<double>::max();
   for(const auto neigh : neighbors){
     for(const auto& coords: gridToInterpol[neigh]){
-      dist_min = std::min<float>(dist_min, distance(cellCoordsCenter, coords));
+      dist_min = std::min<double>(dist_min, distance(cellCoordsCenter, coords));
     }
   }
 
   for(const auto neigh : neighbors){
     for(const auto& coords: gridToInterpol[neigh]){
-      float dist = distance(cellCoordsCenter, coords);
+      double dist = distance(cellCoordsCenter, coords);
       if (dist < 0.5 + radius) {
 	dist -= dist_min;
 	dist *= resolution;
@@ -120,29 +120,43 @@ gaussianType getGaussian(const std::vector<double>& pos,
     }
   }
 
-  uint16_t nbPointsInDisc = indexes.size(); 
-  float weightsSum = std::accumulate(weights.begin(),
-				     weights.end(),
-				     0.0);
-
-  if(nbPointsInDisc > 0){
-    for( size_t band = 0; band < nbBands ; ++band) {
-      std::vector<float> indexesValue(nbPointsInDisc);
-      gaussian_interp[band] = 0;
-      for( size_t point = 0; point < nbPointsInDisc ; ++point) {
-	float weight = weights[point];
-	float index = indexes[point];
-	float value = pos[(band+2)*nbPoints+index];
-	indexesValue[point] = value;
-	gaussian_interp[band] += weight*value;
-      }
-      gaussian_interp[band] /= weightsSum;
-     
-      auto [mean_, stdev_] = vector_statistics(indexesValue);
-      mean[band] = mean_;
-      stdev[band] = stdev_;
-
+  bool noValidNeighbor = true;
+  for (const auto index : indexes) {
+    if (validVector[index] != 0) {
+      noValidNeighbor = false;
+      break;
     }
+  }
+
+  uint16_t nbPointsInDisc;
+  if (noValidNeighbor == false) {
+    nbPointsInDisc = indexes.size(); 
+    double weightsSum = std::accumulate(weights.begin(),
+				       weights.end(),
+				       0.0);
+
+    if(nbPointsInDisc > 0){
+      for( size_t band = 0; band < nbBands ; ++band) {
+	std::vector<double> indexesValue(nbPointsInDisc);
+	gaussian_interp[band] = 0;
+	for( size_t point = 0; point < nbPointsInDisc ; ++point) {
+	  double weight = weights[point];
+	  size_t index = indexes[point];
+	  double value = valuesVector[band*nbPoints+index];
+	  indexesValue[point] = value;
+	  gaussian_interp[band] += weight*value;
+	}
+	gaussian_interp[band] /= weightsSum;
+	
+	auto [mean_, stdev_] = vector_statistics(indexesValue);
+	mean[band] = mean_;
+	stdev[band] = stdev_;
+      }
+    }
+  }
+  else {
+    nbPointsInCell = 0;
+    nbPointsInDisc = 0;
   }
 
   return std::make_tuple(gaussian_interp,
@@ -151,23 +165,25 @@ gaussianType getGaussian(const std::vector<double>& pos,
 			 nbPointsInCell);
 }
 
-std::vector<double> pointCloudToDSM(const std::vector<double>& pos,
-				    const size_t nbBands, 
-				    const size_t nbPoints,
-				    const float xStart, 
-				    const float yStart, 
-				    const size_t xSize,
-				    const size_t ySize,
-				    const float resolution,
-				    const size_t radius,
-				    const float sigma,
-				    std::vector<double> &meanVector,
-				    std::vector<double> &stdevVector,
-				    std::vector<uint16_t> &nbPointsInDiscVector,
-				    std::vector<uint16_t> &nbPointsInCellVector)
+std::vector<float> pointCloudToDSM(const std::vector<double>& pointsVector,
+				   const std::vector<double>& valuesVector,
+				   const std::vector<int>& validVector,
+				   const size_t nbBands, 
+				   const size_t nbPoints,
+				   const double xStart, 
+				   const double yStart, 
+				   const size_t xSize,
+				   const size_t ySize,
+				   const double resolution,
+				   const size_t radius,
+				   const double sigma,
+				   std::vector<float>& meanVector,
+				   std::vector<float>& stdevVector,
+				   std::vector<uint16_t>& nbPointsInDiscVector,
+				   std::vector<uint16_t>& nbPointsInCellVector)
 {
   const size_t outSize = xSize*ySize;
-  std::vector<double> outputVector(nbBands*outSize);
+  std::vector<float> outputVector(nbBands*outSize);
   meanVector.resize(nbBands*outSize);
   stdevVector.resize(nbBands*outSize);
   nbPointsInDiscVector.resize(nbBands*outSize);
@@ -180,8 +196,8 @@ std::vector<double> pointCloudToDSM(const std::vector<double>& pos,
 
   for ( size_t k = 0 ; k < nbPoints ; ++k ) {
     
-    x = pos[(0*nbPoints)+k];
-    y = pos[(1*nbPoints)+k];
+    x = pointsVector[(0*nbPoints)+k];
+    y = pointsVector[(1*nbPoints)+k];
 
     col = (x - xStart) / resolution;
     row = (yStart - y) / resolution;
@@ -191,7 +207,7 @@ std::vector<double> pointCloudToDSM(const std::vector<double>& pos,
 
     if ((cellCol >= 0) && (cellCol < xSize) && (cellRow >= 0) && (cellRow < ySize)) {
       rowByCol= cellCol + cellRow * xSize;
-      gridToInterpol[rowByCol].push_back(Coords{col, row, static_cast<float> (k)});
+      gridToInterpol[rowByCol].push_back(Coords{col, row, static_cast<double> (k)});
     }
 
   }
@@ -214,7 +230,8 @@ std::vector<double> pointCloudToDSM(const std::vector<double>& pos,
 	  mean,
 	  stdev,
 	  nbPointsInDisc,
-	  nbPointsInCell] = getGaussian(pos,
+	  nbPointsInCell] = getGaussian(valuesVector,
+					validVector,
 					gridToInterpol,
 					neighbors,
 					cellCol,
@@ -255,21 +272,54 @@ typedef std::tuple<py::array, // gaussian interpolation
 		   > pyPointCloudtoDSMType;
 
 pyPointCloudtoDSMType pyPointCloudToDSM(py::array_t<double,
-					py::array::c_style | py::array::forcecast> array,
-					float xStart,
-					float yStart,
+					py::array::c_style | py::array::forcecast> points,
+					py::array_t<double,
+					py::array::c_style | py::array::forcecast> values,
+					py::array_t<int,
+					py::array::c_style | py::array::forcecast> valid,
+					double xStart,
+					double yStart,
 					size_t xSize,
 					size_t ySize,
-					float resolution,
+					double resolution,
 					size_t radius,
-					float sigma)
+					double sigma)
 {
   // check input dimensions
-  if ( array.ndim()     != 2 )
-    throw std::runtime_error("Input should be 2-D NumPy array");
+  if ( points.ndim()     != 2 )
+    throw std::runtime_error("points should be 2-D NumPy array");
+
+  if ( points.shape()[0] != 2 )
+    throw std::runtime_error("points should have size [2, N]");
+
+  ssize_t nbPoints = points.shape()[1];
+
+  if ( values.ndim()     != 2 )
+    throw std::runtime_error("values should be 2-D NumPy array");
+
+  if ( values.shape()[1] != nbPoints ) {
+    std::string message = "values and points should have the same second dimension";
+    message = message + std::string("(") + std::to_string(values.shape()[1]);
+    message = message + std::string(" ~= ") + std::to_string(nbPoints) + std::string(")");
+    throw std::runtime_error(message);
+  }
+
+  size_t nbBands = values.shape()[0];
+
+  if ( valid.ndim()     != 2 )
+    throw std::runtime_error("valid should be 2-D NumPy array");
+
+  if ( valid.shape()[1] != nbPoints ) {
+    std::string message = "valid and points should have the same second dimension";
+    message = message + std::string("(") + std::to_string(valid.shape()[1]);
+    message = message + std::string(" ~= ") + std::to_string(nbPoints) + std::string(")");
+    throw std::runtime_error(message);
+  }  
 
   // allocate std::vector (to pass to the C++ function)
-  std::vector<double> pos(array.size());
+  std::vector<double> pointsVector(points.size());
+  std::vector<double> valuesVector(values.size());
+  std::vector<int> validVector(valid.size());
 
   // copy py::array -> std::vector
   // Do we need to make a copy here ? Is there something similar
@@ -278,17 +328,19 @@ pyPointCloudtoDSMType pyPointCloudToDSM(py::array_t<double,
   // It seems that passing the py::array by reference should do the job if
   // there is not conflicting type, however the function pointCloudToDSM needs a double * ptr as
   // input instead of a std::vector.
-  std::memcpy(pos.data(),array.data(),array.size()*sizeof(double));
-  size_t nbBands = array.shape()[0]-2;
-  size_t nbPoints = array.shape()[1];
+  std::memcpy(pointsVector.data(),points.data(),points.size()*sizeof(double));
+  std::memcpy(valuesVector.data(),values.data(),values.size()*sizeof(double));
+  std::memcpy(validVector.data(),valid.data(),valid.size()*sizeof(int));
 
-  std::vector<double> meanVector;
-  std::vector<double> stdevVector;
+  std::vector<float> meanVector;
+  std::vector<float> stdevVector;
   std::vector<uint16_t> nbPointsInDiscVector;
   std::vector<uint16_t> nbPointsInCellVector;
 
   // call pure C++ function
-  auto outputVector = pointCloudToDSM(pos,
+  auto outputVector = pointCloudToDSM(pointsVector,
+				      valuesVector,
+				      validVector,
 				      nbBands,
 				      nbPoints,
 				      xStart,
@@ -306,31 +358,31 @@ pyPointCloudtoDSMType pyPointCloudToDSM(py::array_t<double,
   // out, mean, stdev for each band + n_pts and n_in_cell
   ssize_t             ndim    = 3;
   std::vector<size_t> shape   = { xSize, ySize, nbBands };
-  std::vector<size_t> strides = { nbBands*ySize*sizeof(double),
-				  nbBands*sizeof(double),
-				  sizeof(double)};
+  std::vector<size_t> strides = { nbBands*ySize*sizeof(float),
+				  nbBands*sizeof(float),
+				  sizeof(float)};
   
   // return 2-D NumPy array, I think here it is ok since the expected argument is
   // a pointer so there is no copy
   auto out = py::array(py::buffer_info(outputVector.data(),
-				       sizeof(double), 
-				       py::format_descriptor<double>::format(),
+				       sizeof(float), 
+				       py::format_descriptor<float>::format(),
 				       ndim,
 				       shape,
 				       strides
 				       ));
 
   auto mean = py::array(py::buffer_info(meanVector.data(),
-					sizeof(double), 
-					py::format_descriptor<double>::format(),
+					sizeof(float), 
+					py::format_descriptor<float>::format(),
 					ndim,  
 					shape,
 					strides
 					));
 
   auto stdev = py::array(py::buffer_info(stdevVector.data(),
-					 sizeof(double), 
-					 py::format_descriptor<double>::format(),
+					 sizeof(float), 
+					 py::format_descriptor<float>::format(),
 					 ndim,  
 					 shape,
 					 strides
