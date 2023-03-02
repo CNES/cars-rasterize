@@ -83,6 +83,14 @@ def main(cloud_in, dsm_out, resolution=0.5, radius=1, sigma=None, roi=None):
         sigma,
     )
 
+    # reshape data as a 2d grid.
+    shape_out = (roi["ysize"], roi["xsize"])
+    out = out.reshape(shape_out + (-1,))
+    mean = mean.reshape(shape_out + (-1,))
+    stdev = stdev.reshape(shape_out + (-1,))
+    nb_pts_in_disc = nb_pts_in_disc.reshape(shape_out)
+    nb_pts_in_cell = nb_pts_in_cell.reshape(shape_out)
+
     # save all images
     # out: gaussian interpolation
     transform = Affine.translation(roi["xstart"], roi["ystart"])
