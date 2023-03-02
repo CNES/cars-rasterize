@@ -84,7 +84,7 @@ def main(cloud_in, dsm_out, resolution=0.5, radius=1, sigma=None, roi=None):
     )
 
     # reshape data as a 2d grid.
-    shape_out = (roi["ysize"], roi["xsize"])
+    shape_out = (int(roi["ysize"]), int(roi["xsize"]))
     out = out.reshape(shape_out + (-1,))
     mean = mean.reshape(shape_out + (-1,))
     stdev = stdev.reshape(shape_out + (-1,))
