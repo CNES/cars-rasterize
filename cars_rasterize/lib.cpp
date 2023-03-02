@@ -36,24 +36,24 @@ std::pair<double, double> vector_statistics(const std::vector<double> vect)
 }
 
 
-std::vector<size_t> getNeighboringCells(const long int cellCol,
-					const long int cellRow,
-					const long int xSize,
-					const long int ySize,
-					const long int radius)
+std::vector<long int> getNeighboringCells(const long int cellCol,
+					  const long int cellRow,
+					  const long int xSize,
+					  const long int ySize,
+					  const long int radius)
 {
     
-  std::vector<size_t> neighboringCells;
+  std::vector<long int> neighboringCells;
 
   // window of 2 * radius + 1 centered on the current cell coordinates
-  long int minCol = std::max<long int>(0, cellCol - radius);
-  long int minRow = std::max<long int>(0, cellRow - radius);
-  long int maxCol = std::min<long int>(xSize-1, cellCol + radius);
-  long int maxRow = std::min<long int>(ySize-1, cellRow + radius);
+  long int minCol = std::max<long int>(-radius, cellCol - radius);
+  long int minRow = std::max<long int>(-radius, cellRow - radius);
+  long int maxCol = std::min<long int>((xSize-1)+radius, cellCol + radius);
+  long int maxRow = std::min<long int>((ySize-1)+radius, cellRow + radius);
 
   for(long int r = minRow; r <= maxRow; r++){
     for(long int c = minCol; c <= maxCol; c++){
-      neighboringCells.push_back( r * xSize + c );
+      neighboringCells.push_back( (r+radius) * (xSize+2*radius) + (c+radius) );
     }
   }
 
@@ -71,16 +71,16 @@ typedef std::tuple<std::vector<double>, // gaussian interpolation
 gaussianType getGaussian(const std::vector<double>& valuesVector,
 			 const std::vector<int>& validVector,
 			 const std::vector< CoordsList >& gridToInterpol,
-			 const std::vector<size_t>& neighbors,
-			 const size_t cellCol,
-			 const size_t cellRow,
-			 const size_t xSize,
-			 const size_t ySize,
+			 const std::vector<long int>& neighbors,
+			 const long int cellCol,
+			 const long int cellRow,
+			 const long int xSize,
+			 const long int ySize,
 			 const double sigma,
 			 const long int radius,
 			 const double resolution,
-			 const size_t nbBands,
-			 const size_t nbPoints)
+			 const long int nbBands,
+			 const long int nbPoints)
 {
 
   // We take the coordinates at the center of the pixel
@@ -89,7 +89,7 @@ gaussianType getGaussian(const std::vector<double>& valuesVector,
                                     -1.f };
   std::list < std::pair<double, Coords> > coordsList;
   uint16_t nbPointsInCell = 0;
-  std::vector<size_t> indexes;
+  std::vector<long int> indexes;
   std::vector<double> weights; 
   std::vector<double> gaussian_interp(nbBands, std::numeric_limits<double>::quiet_NaN());
   std::vector<double> mean(nbBands, std::numeric_limits<double>::quiet_NaN());
@@ -132,16 +132,16 @@ gaussianType getGaussian(const std::vector<double>& valuesVector,
   if (noValidNeighbor == false) {
     nbPointsInDisc = indexes.size(); 
     double weightsSum = std::accumulate(weights.begin(),
-				       weights.end(),
-				       0.0);
+					weights.end(),
+					0.0);
 
     if(nbPointsInDisc > 0){
-      for( size_t band = 0; band < nbBands ; ++band) {
+      for( long int band = 0; band < nbBands ; ++band) {
 	std::vector<double> indexesValue(nbPointsInDisc);
 	gaussian_interp[band] = 0;
-	for( size_t point = 0; point < nbPointsInDisc ; ++point) {
+	for( long int point = 0; point < nbPointsInDisc ; ++point) {
 	  double weight = weights[point];
-	  size_t index = indexes[point];
+	  long int index = indexes[point];
 	  double value = valuesVector[band*nbPoints+index];
 	  indexesValue[point] = value;
 	  gaussian_interp[band] += weight*value;
@@ -168,21 +168,21 @@ gaussianType getGaussian(const std::vector<double>& valuesVector,
 std::vector<float> pointCloudToDSM(const std::vector<double>& pointsVector,
 				   const std::vector<double>& valuesVector,
 				   const std::vector<int>& validVector,
-				   const size_t nbBands, 
-				   const size_t nbPoints,
+				   const long int nbBands, 
+				   const long int nbPoints,
 				   const double xStart, 
 				   const double yStart, 
-				   const size_t xSize,
-				   const size_t ySize,
+				   const long int xSize,
+				   const long int ySize,
 				   const double resolution,
-				   const size_t radius,
+				   const long int radius,
 				   const double sigma,
 				   std::vector<float>& meanVector,
 				   std::vector<float>& stdevVector,
 				   std::vector<uint16_t>& nbPointsInDiscVector,
 				   std::vector<uint16_t>& nbPointsInCellVector)
 {
-  const size_t outSize = xSize*ySize;
+  const long int outSize = xSize*ySize;
   std::vector<float> outputVector(nbBands*outSize);
   meanVector.resize(nbBands*outSize);
   stdevVector.resize(nbBands*outSize);
@@ -190,30 +190,31 @@ std::vector<float> pointCloudToDSM(const std::vector<double>& pointsVector,
   nbPointsInCellVector.resize(nbBands*outSize);
 
   // For each target pixel, we store a list of fractional Z coordinates
-  std::vector< CoordsList > gridToInterpol(outSize);
+  const long int outSizeWithMargins = (xSize+2*radius)*(ySize+2*radius);
+  std::vector< CoordsList > gridToInterpolWithMargins(outSizeWithMargins);
   double x, y, col, row;
-  size_t cellCol, cellRow, rowByCol;
+  long int cellCol, cellRow, rowByCol;
 
-  for ( size_t k = 0 ; k < nbPoints ; ++k ) {
-    
+  for ( long int k = 0 ; k < nbPoints ; ++k ) {
+
     x = pointsVector[(0*nbPoints)+k];
     y = pointsVector[(1*nbPoints)+k];
 
     col = (x - xStart) / resolution;
     row = (yStart - y) / resolution;
-    
+
     cellCol = floor(col);
     cellRow = floor(row);
 
-    if ((cellCol >= 0) && (cellCol < xSize) && (cellRow >= 0) && (cellRow < ySize)) {
-      rowByCol= cellCol + cellRow * xSize;
-      gridToInterpol[rowByCol].push_back(Coords{col, row, static_cast<double> (k)});
+    if ((cellCol >= -radius) && (cellCol < xSize+radius) \
+	&& (cellRow >= -radius) && (cellRow < ySize+radius)) {
+      rowByCol = (cellCol+radius) + (cellRow+radius) * (xSize+2*radius);
+      gridToInterpolWithMargins[rowByCol].push_back(Coords{col, row, static_cast<double> (k)});
     }
-
   }
 
   // Loop over the grid to interpolate the z for each cell
-  for ( size_t k = 0 ; k < outSize ; ++k ) {
+  for ( long int k = 0 ; k < outSize ; ++k ) {
 
     cellCol = k % xSize;
     cellRow = k / xSize;
@@ -232,7 +233,7 @@ std::vector<float> pointCloudToDSM(const std::vector<double>& pointsVector,
 	  nbPointsInDisc,
 	  nbPointsInCell] = getGaussian(valuesVector,
 					validVector,
-					gridToInterpol,
+					gridToInterpolWithMargins,
 					neighbors,
 					cellCol,
 					cellRow,
@@ -244,7 +245,7 @@ std::vector<float> pointCloudToDSM(const std::vector<double>& pointsVector,
 					nbBands,
 					nbPoints);
 
-    for( size_t band = 0; band < nbBands ; ++band) {
+    for( long int band = 0; band < nbBands ; ++band) {
       outputVector[k*nbBands+band] = out[band];
       meanVector[k*nbBands+band] = mean[band];
       stdevVector[k*nbBands+band] = stdev[band];
@@ -279,10 +280,10 @@ pyPointCloudtoDSMType pyPointCloudToDSM(py::array_t<double,
 					py::array::c_style | py::array::forcecast> valid,
 					double xStart,
 					double yStart,
-					size_t xSize,
-					size_t ySize,
+					long int xSize,
+					long int ySize,
 					double resolution,
-					size_t radius,
+					long int radius,
 					double sigma)
 {
   // check input dimensions
@@ -292,7 +293,7 @@ pyPointCloudtoDSMType pyPointCloudToDSM(py::array_t<double,
   if ( points.shape()[0] != 2 )
     throw std::runtime_error("points should have size [2, N]");
 
-  ssize_t nbPoints = points.shape()[1];
+  long int nbPoints = points.shape()[1];
 
   if ( values.ndim()     != 2 )
     throw std::runtime_error("values should be 2-D NumPy array");
@@ -304,7 +305,7 @@ pyPointCloudtoDSMType pyPointCloudToDSM(py::array_t<double,
     throw std::runtime_error(message);
   }
 
-  size_t nbBands = values.shape()[0];
+  long int nbBands = values.shape()[0];
 
   if ( valid.ndim()     != 2 )
     throw std::runtime_error("valid should be 2-D NumPy array");
@@ -356,7 +357,7 @@ pyPointCloudtoDSMType pyPointCloudToDSM(py::array_t<double,
 				      nbPointsInCellVector);
 
   // out, mean, stdev for each band + n_pts and n_in_cell
-  ssize_t             ndim    = 3;
+  size_t              ndim    = 3;
   std::vector<size_t> shape   = { xSize, ySize, nbBands };
   std::vector<size_t> strides = { nbBands*ySize*sizeof(float),
 				  nbBands*sizeof(float),
@@ -394,15 +395,15 @@ pyPointCloudtoDSMType pyPointCloudToDSM(py::array_t<double,
 	      sizeof(uint16_t)};
   
   auto nbPointsInDisc = py::array(py::buffer_info(nbPointsInDiscVector.data(),
-						    sizeof(size_t), 
-						    py::format_descriptor<uint16_t>::format(),
-						    ndim,  
-						    shape,
-						    strides
-						    ));
+						  sizeof(uint16_t), 
+						  py::format_descriptor<uint16_t>::format(),
+						  ndim,  
+						  shape,
+						  strides
+						  ));
 
   auto nbPointsInCell = py::array(py::buffer_info(nbPointsInCellVector.data(),
-						  sizeof(size_t), 
+						  sizeof(uint16_t), 
 						  py::format_descriptor<uint16_t>::format(),
 						  ndim,  
 						  shape,
