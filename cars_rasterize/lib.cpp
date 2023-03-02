@@ -280,10 +280,10 @@ pyPointCloudtoDSMType pyPointCloudToDSM(py::array_t<double,
 					py::array::c_style | py::array::forcecast> valid,
 					double xStart,
 					double yStart,
-					long int xSize,
-					long int ySize,
+					size_t xSize,
+					size_t ySize,
 					double resolution,
-					long int radius,
+					size_t radius,
 					double sigma)
 {
   // check input dimensions
@@ -293,29 +293,28 @@ pyPointCloudtoDSMType pyPointCloudToDSM(py::array_t<double,
   if ( points.shape()[0] != 2 )
     throw std::runtime_error("points should have size [2, N]");
 
-  long int nbPoints = points.shape()[1];
-
   if ( values.ndim()     != 2 )
     throw std::runtime_error("values should be 2-D NumPy array");
 
-  if ( values.shape()[1] != nbPoints ) {
+  if ( values.shape()[1] != points.shape()[1] ) {
     std::string message = "values and points should have the same second dimension";
     message = message + std::string("(") + std::to_string(values.shape()[1]);
-    message = message + std::string(" ~= ") + std::to_string(nbPoints) + std::string(")");
+    message = message + std::string(" ~= ") + std::to_string(points.shape()[1]) + std::string(")");
     throw std::runtime_error(message);
   }
-
-  long int nbBands = values.shape()[0];
 
   if ( valid.ndim()     != 2 )
     throw std::runtime_error("valid should be 2-D NumPy array");
 
-  if ( valid.shape()[1] != nbPoints ) {
+  if ( valid.shape()[1] != points.shape()[1] ) {
     std::string message = "valid and points should have the same second dimension";
     message = message + std::string("(") + std::to_string(valid.shape()[1]);
-    message = message + std::string(" ~= ") + std::to_string(nbPoints) + std::string(")");
+    message = message + std::string(" ~= ") + std::to_string(points.shape()[1]) + std::string(")");
     throw std::runtime_error(message);
   }  
+
+  size_t nbBands = values.shape()[0];
+  size_t nbPoints = points.shape()[1];
 
   // allocate std::vector (to pass to the C++ function)
   std::vector<double> pointsVector(points.size());
@@ -419,5 +418,16 @@ PYBIND11_MODULE(rasterize, m)
 {
   m.doc() = "rasterize";
 
-  m.def("pc_to_dsm", &pyPointCloudToDSM, "Convert point cloud to digital surface model");
+  m.def("pc_to_dsm", &pyPointCloudToDSM, "Convert point cloud to digital surface model",
+	py::arg("points"),
+	py::arg("values"),
+	py::arg("valid"),
+	py::arg("xstart"),
+	py::arg("ystart"),
+	py::arg("xsize"),
+	py::arg("ysize"),
+	py::arg("resolution"),
+	py::arg("radius"),
+	py::arg("sigma")
+	);
 }
