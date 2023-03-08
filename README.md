@@ -38,6 +38,7 @@ wget https://raw.githubusercontent.com/CNES/cars-rasterize/master/data/subsample
 subsampled_nimes.laz |
 :-------------------------:|
 <img src="docs/source/images/nimes.gif" alt="drawing" width="400"/> 
+
 [subsampled_nimes.laz*](./data/subsampled_nimes.laz) is from https://geoservices.ign.fr/lidarhd. and has been downsampled (1 point every 50cm) to make the file smaller.
 
 2. Run **cars_rasterize** executable:
