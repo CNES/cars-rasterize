@@ -1,5 +1,5 @@
 <div align="center">
-  <a href="https://gitlab.cnes.fr/cars/cars_rasterize"><img src="docs/source/images/picto_transparent.png" alt="CARS" title="CARS"  width="20%"></a>
+  <a href="https://github.com/CNES/cars"><img src="docs/source/images/picto_transparent.png" alt="CARS" title="CARS"  width="20%"></a>
 
 <h4>cars-rasterize</h4>
 
