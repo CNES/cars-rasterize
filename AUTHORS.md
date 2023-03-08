@@ -2,9 +2,10 @@
 
 ## Development Lead
 
-
-* CNES <cars@cnes.fr>
-* To update with main developers
+* David Youssefi <david.youssefi@cnes.fr>
+* Pierre Lassalle <pierre.lassalle@cnes.fr>
+* Emmanuelle Sarrazin <emmanuelle.sarrazin@cnes.fr>
+* Emmanuel Dubois <emmanuel.dubois@cnes.fr>
 
 ## Contributors
 
