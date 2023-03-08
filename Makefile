@@ -78,7 +78,7 @@ install: venv git  ## install the package in dev mode in virtualenv
 	@echo " cars_rasterize venv usage : source ${VENV}/bin/activate; cars_rasterize -h"
 
 ## Test section
-	
+
 .PHONY: test
 test: install ## run tests and coverage quickly with the default Python (source venv before)
 	@${VENV}/bin/pytest -o log_cli=true --cov-config=.coveragerc --cov --cov-report=term-missing
@@ -86,7 +86,7 @@ test: install ## run tests and coverage quickly with the default Python (source 
 .PHONY: test-all
 test-all: install ## run tests on every Python version with tox (source venv before)
 	@${VENV}/bin/tox -r -p auto  ## recreate venv (-r) and parallel mode (-p auto)
-	
+
 .PHONY: coverage
 coverage: install ## check code coverage quickly with the default Python
 	@${VENV}/bin/coverage run --source cars_rasterize -m pytest
@@ -120,7 +120,7 @@ lint: install lint/isort lint/black lint/flake8 lint/pylint lint/mypy ## check c
 lint/isort: ## check imports style with isort
 	@echo "+ $@"
 	@${VENV}/bin/isort --check cars_rasterize tests
-	
+
 .PHONY: lint/black
 lint/black: ## check global style with black
 	@echo "+ $@"
@@ -140,7 +140,7 @@ lint/pylint: ## check linting with pylint
 lint/mypy: ## check linting type hints with mypy
 	@echo "+ $@"
 	@${VENV}/bin/mypy cars_rasterize tests
-	
+
 ## Documentation section
 
 .PHONY: docs
@@ -173,7 +173,7 @@ docker: git ## Build docker image (and check Dockerfile)
 	@docker build -t cnes/cars_rasterize:${VERSION_MIN} -t cnes/cars_rasterize:latest .
 
 ## Release section
-	
+
 .PHONY: dist
 dist: clean install ## clean, install, builds source and wheel package
 	@${VENV}/bin/python -m pip install --upgrade build
