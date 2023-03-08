@@ -1,4 +1,4 @@
-# **cars-rasterize** **Contributing guide**.
+# **Contributing guide**.
 
 Contributions are welcome, and they are greatly appreciated! Every little bit
 helps, and credit will always be given.
@@ -130,30 +130,12 @@ It is possible to run only pylint tool to check code modifications:
 Pylint messages can be avoided (in particular cases !) adding "#pylint: disable=error-message-name" in the file or line.
 Look at examples in code.
 
-
 # Merge request acceptation process
 
-TO UPDATE, depending on the project
-
-Here is a cars exemple:
-
-Two Merge Requests types to help the workflow :
-- Simple merge requests (bugs, documentation) can be merged directly by the author with rights on master.
-- Advanced merge requests (typically a big change in code) are flagged with "To be Reviewed" by the author
-
-This mechanism is to help quick modifications and avoid long reviews on unneeded simple merge requests.
-The author has to be responsible in the need or  not to be reviewed.
-
-## Advanced Merge Request
-The Advanced Merge Request will be merged into master after being reviewed by a project steering committee (core committers) composed of:
-* Name1
-* Name2
-* ...
+The Merge Request will be merged into master after being reviewed by CARS steering committee (core committers) composed of:
+* David Youssefi (CNES)
+* Pierre Lassalle (CNES)
+* Emmanuelle Sarrazin (CNES)
+* Emmanuel Dubois (CNES)
 
 Only the members of this committee can merge into master.
-
-The checklist of a Advanced Merge Request acceptance is the following:
-* [ ] At least one code review have been done by members of the group above (who check among others the correct application of the rules listed in the [Coding guide](# Coding guide)).
-* [ ] All comments of the reviewers has been dealt with and are closed
-* [ ] The reviewers have signaled their approbation (thumb up)
-* [ ] No developer is against the Merge Request (thumb down)
