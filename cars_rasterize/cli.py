@@ -33,6 +33,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("cloud_in")
     parser.add_argument("dsm_out")
+    parser.add_argument("--clr_out", default=None)
     parser.add_argument("--resolution", default=0.5, type=float)
     parser.add_argument("--radius", default=1, type=int)
     parser.add_argument("--sigma", default=None, type=float)
@@ -57,6 +58,7 @@ def main():
     apy.main(
         args.cloud_in,
         args.dsm_out,
+        clr_out=args.clr_out,
         resolution=args.resolution,
         radius=args.radius,
         sigma=args.sigma,
