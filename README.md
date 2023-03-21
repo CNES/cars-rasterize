@@ -1,5 +1,5 @@
 <div align="center">
-  <a href="https://github.com/CNES/cars"><img src="docs/source/images/picto_transparent.png" alt="CARS" title="CARS"  width="20%"></a>
+  <a href="https://github.com/CNES/cars"><img src="https://raw.githubusercontent.com/CNES/cars-rasterize/master/docs/images/picto_transparent.png" alt="CARS" title="CARS"  width="20%"></a>
 
 <h4>cars-rasterize</h4>
 
@@ -37,13 +37,13 @@ wget https://raw.githubusercontent.com/CNES/cars-rasterize/master/data/subsample
 
 subsampled_nimes.laz |
 :-------------------------:|
-<img src="docs/source/images/nimes.gif" alt="drawing" width="400"/> 
+<img src="https://raw.githubusercontent.com/CNES/cars-rasterize/master/docs/images/nimes.gif" alt="drawing" width="400"/> 
 
 [subsampled_nimes.laz*](./data/subsampled_nimes.laz) is from https://geoservices.ign.fr/lidarhd. and has been downsampled (1 point every 50cm) to make the file smaller.
 
-2. Run **cars_rasterize** executable:
+2. Run **las2tif** executable:
 ```
-cars_rasterize subsampled_nimes.laz dsm.tif --clr_out clr.tif
+las2tif subsampled_nimes.laz dsm.tif --clr_out clr.tif
 ```
 
 3. ✅ Done! The executable generates two files:
@@ -52,7 +52,7 @@ cars_rasterize subsampled_nimes.laz dsm.tif --clr_out clr.tif
 
 dsm.tif |  clr.tif
 :-------------------------:|:-------------------------:
-<img src="docs/source/images/nimes_elevation.png" alt="drawing" width="300"/>|   <img src="docs/source/images/nimes_colors.png" alt="drawing" width="300"/>
+<img src="https://raw.githubusercontent.com/CNES/cars-rasterize/master/docs/images/nimes_elevation.png" alt="drawing" width="300"/>|   <img src="https://raw.githubusercontent.com/CNES/cars-rasterize/master/docs/images/nimes_colors.png" alt="drawing" width="300"/>
 
 
 ## How it works
@@ -69,7 +69,7 @@ For each cell of center $(c_x, c_y)$, we consider the subset of points contained
 
 Contributing points |
 :-------------------------:|
-<img src="docs/source/images/contributing_points.png" alt="drawing" width="600"/>
+<img src="https://raw.githubusercontent.com/CNES/cars-rasterize/master/docs/images/contributing_points.png" alt="drawing" width="600"/>
 
 Then, the altitude assigned $z(c_x, c_y)$ to the cell is a Gaussian  weighted average (standard deviation **sigma** $\sigma$) of the distance $d$ to its center :
 

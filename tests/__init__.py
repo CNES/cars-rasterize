@@ -3,7 +3,7 @@
 #
 # Copyright (C) 2023 Centre National d'Etudes Spatiales (CNES).
 #
-# This file is part of cars_rasterize
+# This file is part of cars-rasterize
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,4 +18,4 @@
 # limitations under the License.
 #
 
-"""Unit test package for cars_rasterize."""
+"""Unit test package for cars-rasterize."""

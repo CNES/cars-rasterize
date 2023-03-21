@@ -3,7 +3,7 @@
 #
 # Copyright (C) 2023 Centre National d'Etudes Spatiales (CNES).
 #
-# This file is part of cars_rasterize
+# This file is part of cars-rasterize
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,10 +19,12 @@
 #
 
 """
-Python api for cars_rasterize.
+Console script for las2tif
 """
 
+import argparse
 import json
+import sys
 from pathlib import Path
 
 import laspy
@@ -44,7 +46,7 @@ def main(
     roi=None,
 ):
     """
-    Convert point cloud to dsm
+    Convert point cloud las to dsm tif
     """
     with laspy.open(cloud_in) as creader:
         las = creader.read()
@@ -137,3 +139,47 @@ def main(
         with rio.open(clr_out, "w", **profile) as dst:
             for band in range(3):
                 dst.write(out[..., band + 1], band + 1)
+
+
+def console_script():
+    """Console script for las2tif."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument("cloud_in")
+    parser.add_argument("dsm_out")
+    parser.add_argument("--clr_out", default=None)
+    parser.add_argument("--resolution", default=0.5, type=float)
+    parser.add_argument("--radius", default=1, type=int)
+    parser.add_argument("--sigma", default=None, type=float)
+    parser.add_argument(
+        "--roi",
+        nargs=4,
+        metavar=("xstart", "ystart", "xsize", "ysize"),
+        default=None,
+        type=float,
+    )
+
+    args = parser.parse_args()
+    user_roi = None
+    if args.roi is not None:
+        user_roi = {
+            "xstart": args.roi[0],
+            "ystart": args.roi[1],
+            "xsize": int(args.roi[2]),
+            "ysize": int(args.roi[3]),
+        }
+
+    main(
+        args.cloud_in,
+        args.dsm_out,
+        clr_out=args.clr_out,
+        resolution=args.resolution,
+        radius=args.radius,
+        sigma=args.sigma,
+        roi=user_roi,
+    )
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(console_script())  # pragma: no cover

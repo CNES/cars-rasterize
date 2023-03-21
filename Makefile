@@ -69,13 +69,13 @@ venv: ## create virtualenv in "venv" dir if not exists
 
 .PHONY: install
 install: venv git  ## install the package in dev mode in virtualenv
-	@test -f ${VENV}/bin/cars_rasterize || echo "Install cars_rasterize package from local directory"
-	@test -f ${VENV}/bin/cars_rasterize || ${VENV}/bin/python -m pip install -e .[dev,docs,notebook]
+	@test -f ${VENV}/bin/las2tif || echo "Install cars-rasterize package from local directory"
+	@test -f ${VENV}/bin/las2tif || ${VENV}/bin/python -m pip install -e .[dev]
 	@test -f .git/hooks/pre-commit || echo "Install pre-commit"
 	@test -f .git/hooks/pre-commit || ${VENV}/bin/pre-commit install -t pre-commit
 	@chmod +x ${VENV}/bin/register-python-argcomplete
-	@echo "cars_rasterize ${VERSION} installed in dev mode in virtualenv ${VENV} with documentation"
-	@echo " cars_rasterize venv usage : source ${VENV}/bin/activate; cars_rasterize -h"
+	@echo "cars-rasterize ${VERSION} installed in dev mode in virtualenv ${VENV} with documentation"
+	@echo " cars-rasterize venv usage : source ${VENV}/bin/activate; las2tif -h"
 
 ## Test section
 
@@ -141,37 +141,6 @@ lint/mypy: ## check linting type hints with mypy
 	@echo "+ $@"
 	@${VENV}/bin/mypy cars_rasterize tests
 
-## Documentation section
-
-.PHONY: docs
-docs: install ## generate Sphinx HTML documentation, including API docs
-	@${VENV}/bin/sphinx-build -M clean docs/source/ docs/build
-	@${VENV}/bin/sphinx-build -M html docs/source/ docs/build -W --keep-going
-	$(BROWSER) docs/build/html/index.html
-
-## Notebook section
-
-.PHONY: notebook
-notebook: install ## Install Jupyter notebook kernel with venv
-	@echo "Install Jupyter Kernel and launch Jupyter notebooks environment"
-	@${VENV}/bin/python -m ipykernel install --sys-prefix --name=cars_rasterize$(VENV) --display-name=cars_rasterize$(VERSION)
-	@echo " --> After virtualenv activation, please use following command to launch local jupyter notebook to open Notebooks:"
-	@echo "jupyter notebook"
-
-.PHONY: notebook-clean-output ## Clean Jupyter notebooks outputs
-notebook-clean-output:
-	@echo "Clean Jupyter notebooks"
-	@${VENV}/bin/jupyter nbconvert --ClearOutputPreprocessor.enabled=True --inplace notebooks/*.ipynb
-
-## Docker section
-
-docker: git ## Build docker image (and check Dockerfile)
-	@echo "Check Dockerfile with hadolint"
-	@docker pull hadolint/hadolint
-	@docker run --rm -i hadolint/hadolint < Dockerfile
-	@echo "Build Docker image cars_rasterize ${VERSION_MIN}"
-	@docker build -t cnes/cars_rasterize:${VERSION_MIN} -t cnes/cars_rasterize:latest .
-
 ## Release section
 
 .PHONY: dist
@@ -188,7 +157,7 @@ release: dist ## package and upload a release
 ## Clean section
 
 .PHONY: clean
-clean: clean-venv clean-build clean-precommit clean-pyc clean-test clean-lint clean-docs clean-notebook ## clean all targets (except docker)
+clean: clean-venv clean-build clean-precommit clean-pyc clean-test clean-lint ## clean all targets
 
 .PHONY: clean-venv
 clean-venv: ## clean venv
@@ -198,6 +167,7 @@ clean-venv: ## clean venv
 .PHONY: clean-build
 clean-build: ## remove build artifacts
 	@echo "+ $@"
+	@rm *.so
 	@rm -fr build/
 	@rm -fr dist/
 	@rm -fr .eggs/
@@ -234,22 +204,3 @@ clean-lint: ## remove linting artifacts
 	@rm -f pylint-report.txt
 	@rm -f pylint-report.xml
 	@rm -rf .mypy_cache/
-
-.PHONY: clean-docs
-clean-docs: ## clean builded documentations
-	@echo "+ $@"
-	@rm -rf docs/build/
-	@rm -rf docs/source/api_reference/
-	@rm -rf docs/source/apidoc/
-
-.PHONY: clean-notebook
-clean-notebook: ## clean notebooks cache
-	@echo "+ $@"
-	@find . -type d -name ".ipynb_checkpoints" -exec rm -fr {} +
-
-.PHONY: clean-docker
-clean-docker: ## clean created docker images
-		@echo "+ $@"
-		@echo "Clean Docker image cars_rasterize ${VERSION_MIN}"
-		@docker image rm cnes/cars_rasterize:${VERSION_MIN}
-		@docker image rm cnes/cars_rasterize:latest
