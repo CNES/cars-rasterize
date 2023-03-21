@@ -167,7 +167,7 @@ clean-venv: ## clean venv
 .PHONY: clean-build
 clean-build: ## remove build artifacts
 	@echo "+ $@"
-	@rm *.so
+	@rm -f *.so
 	@rm -fr build/
 	@rm -fr dist/
 	@rm -fr .eggs/
