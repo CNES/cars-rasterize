@@ -3,11 +3,12 @@
 ## 0.1.1 Minor documentation changes (March 2023)
 
 ### Changed
+- Rename executable to las2tif
 - Remove dockerfile (useless)
+- Remote notebook (useless)
 
 ### Fixed
 - Fix links to github
-- Remove dockerfile
 
 ## 0.1.0 First Official Release (March 2023)
 
