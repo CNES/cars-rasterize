@@ -25,22 +25,22 @@ double distance( const Coords& coords1,
 }
 
 
-void vector_statistics(const std::vector<double>& vect, double & mean,  double & stdev)
+double vector_sumSquaredDiff(const std::vector<double> & vect, double mean)
 {
-  double sum = std::accumulate(vect.begin(), vect.end(), 0.0);
-  mean = sum / vect.size();
-  std::vector<double> diff(vect.size());
-  std::transform(vect.begin(), vect.end(), diff.begin(), [mean](double x) { return x - mean; });
-  double sq_sum = std::inner_product(diff.begin(), diff.end(), diff.begin(), 0.0);
-  stdev=std::sqrt(sq_sum / vect.size());
+  double res=0.0;
+  for(const auto & elm: vect)
+  {
+   res+=(elm-mean)*(elm-mean);
+  }
+  return res;
 }
 
-
-void  getNeighboringCells(std::vector<long int> & neighboringCells, const long int cellCol,
-					  const long int cellRow,
-					  const long int xSize,
-					  const long int ySize,
-					  const long int radius)
+void  getNeighboringCells(std::vector<long int> & neighboringCells, 
+                          const long int cellCol,
+                          const long int cellRow,
+                          const long int xSize,
+                          const long int ySize,
+                          const long int radius)
 {
     
   // window of 2 * radius + 1 centered on the current cell coordinates
@@ -132,17 +132,20 @@ gaussianType getGaussian(const std::vector<double>& valuesVector,
     if(nbPointsInDisc > 0){
       std::vector<double> indexesValue(nbPointsInDisc);
       for( long int band = 0; band < nbBands ; ++band) {
+	std::vector<double> indexesValue(nbPointsInDisc);
+        double indexesValueSum=0.0;
 	gaussian_interp[band] = 0;
 	for( long int point = 0; point < nbPointsInDisc ; ++point) {
 	  double weight = weights[point];
 	  long int index = indexes[point];
 	  double value = valuesVector[band*nbPoints+index];
 	  indexesValue[point] = value;
+          indexesValueSum += value;
 	  gaussian_interp[band] += weight*value;
 	}
 	gaussian_interp[band] /= weightsSum;
-	
-	vector_statistics(indexesValue, mean[band], stdev[band]);
+        mean[band] = indexesValueSum/nbPointsInDisc;
+	stdev[band] = std::sqrt(vector_sumSquaredDiff(indexesValue, mean[band])/nbPointsInDisc);
       }
     }
 
