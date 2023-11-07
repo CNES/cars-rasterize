@@ -206,6 +206,8 @@ std::vector<float> pointCloudToDSM(const std::vector<double>& pointsVector,
     }
   }
 
+  std::vector<long int> neighbors;
+
   // Loop over the grid to interpolate the z for each cell
   for ( long int k = 0 ; k < outSize ; ++k ) {
 
@@ -213,7 +215,7 @@ std::vector<float> pointCloudToDSM(const std::vector<double>& pointsVector,
     cellRow = k / xSize;
 
     // Get neighboring cells with radius defined by the user
-    std::vector<long int> neighbors;
+    neighbors.clear();
 
     getNeighboringCells(neighbors, 
                         cellCol,
