@@ -36,15 +36,13 @@ std::pair<double, double> vector_statistics(const std::vector<double> vect)
 }
 
 
-std::vector<long int> getNeighboringCells(const long int cellCol,
+void  getNeighboringCells(std::vector<long int> & neighboringCells, const long int cellCol,
 					  const long int cellRow,
 					  const long int xSize,
 					  const long int ySize,
 					  const long int radius)
 {
-
-  std::vector<long int> neighboringCells;
-
+    
   // window of 2 * radius + 1 centered on the current cell coordinates
   long int minCol = std::max<long int>(-radius, cellCol - radius);
   long int minRow = std::max<long int>(-radius, cellRow - radius);
@@ -57,7 +55,6 @@ std::vector<long int> getNeighboringCells(const long int cellCol,
     }
   }
 
-  return neighboringCells;
 }
 
 
@@ -218,11 +215,23 @@ std::vector<float> pointCloudToDSM(const std::vector<double>& pointsVector,
     cellRow = k / xSize;
 
     // Get neighboring cells with radius defined by the user
+<<<<<<< HEAD
     auto neighbors = getNeighboringCells(cellCol,
                                          cellRow,
                                          xSize,
                                          ySize,
                                          radius);
+=======
+    std::vector<long int> neighbors;
+
+    getNeighboringCells(neighbors, 
+                        cellCol,
+                        cellRow,
+                        xSize,
+                        ySize,
+                        radius);
+
+>>>>>>> zap: avoid vector copy when calling getNeighboringCells
 
     // Gaussian interpolation
     auto [out,
