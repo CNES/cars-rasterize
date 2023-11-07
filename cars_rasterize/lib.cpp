@@ -202,7 +202,7 @@ std::vector<float> pointCloudToDSM(const std::vector<double>& pointsVector,
     if ((cellCol >= -radius) && (cellCol < xSize+radius) \
 	&& (cellRow >= -radius) && (cellRow < ySize+radius)) {
       rowByCol = (cellCol+radius) + (cellRow+radius) * (xSize+2*radius);
-      gridToInterpolWithMargins[rowByCol].push_back(Coords{col, row, static_cast<double> (k)});
+      gridToInterpolWithMargins[rowByCol].emplace_back(Coords{col, row, static_cast<double> (k)});
     }
   }
 
