@@ -25,14 +25,14 @@ double distance( const Coords& coords1,
 }
 
 
-std::pair<double, double> vector_statistics(const std::vector<double> vect)
+void vector_statistics(const std::vector<double>& vect, double & mean,  double & stdev)
 {
   double sum = std::accumulate(vect.begin(), vect.end(), 0.0);
-  double mean = sum / vect.size();
+  mean = sum / vect.size();
   std::vector<double> diff(vect.size());
   std::transform(vect.begin(), vect.end(), diff.begin(), [mean](double x) { return x - mean; });
   double sq_sum = std::inner_product(diff.begin(), diff.end(), diff.begin(), 0.0);
-  return std::make_pair(mean, std::sqrt(sq_sum / vect.size()));
+  stdev=std::sqrt(sq_sum / vect.size());
 }
 
 
@@ -138,10 +138,8 @@ gaussianType getGaussian(const std::vector<double>& valuesVector,
 	  gaussian_interp[band] += weight*value;
 	}
 	gaussian_interp[band] /= weightsSum;
-
-	auto [mean_, stdev_] = vector_statistics(indexesValue);
-	mean[band] = mean_;
-	stdev[band] = stdev_;
+	
+	vector_statistics(indexesValue, mean[band], stdev[band]);
       }
     }
 
@@ -215,13 +213,6 @@ std::vector<float> pointCloudToDSM(const std::vector<double>& pointsVector,
     cellRow = k / xSize;
 
     // Get neighboring cells with radius defined by the user
-<<<<<<< HEAD
-    auto neighbors = getNeighboringCells(cellCol,
-                                         cellRow,
-                                         xSize,
-                                         ySize,
-                                         radius);
-=======
     std::vector<long int> neighbors;
 
     getNeighboringCells(neighbors, 
@@ -231,7 +222,6 @@ std::vector<float> pointCloudToDSM(const std::vector<double>& pointsVector,
                         ySize,
                         radius);
 
->>>>>>> zap: avoid vector copy when calling getNeighboringCells
 
     // Gaussian interpolation
     auto [out,
