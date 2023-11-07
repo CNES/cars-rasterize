@@ -127,8 +127,8 @@ gaussianType getGaussian(const std::vector<double>& valuesVector,
 				 0.0);
 
     if(nbPointsInDisc > 0){
+      std::vector<double> indexesValue(nbPointsInDisc);
       for( long int band = 0; band < nbBands ; ++band) {
-	std::vector<double> indexesValue(nbPointsInDisc);
 	gaussian_interp[band] = 0;
 	for( long int point = 0; point < nbPointsInDisc ; ++point) {
 	  double weight = weights[point];
