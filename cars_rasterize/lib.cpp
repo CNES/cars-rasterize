@@ -57,28 +57,25 @@ void  getNeighboringCells(std::vector<long int> & neighboringCells,
 
 }
 
-
-typedef std::tuple<std::vector<double>, // gaussian interpolation
-		   double, // sum of weights
-		   std::vector<double>, // mean
-		   std::vector<double>, // standard deviation
-		   uint16_t, // nb points in discus
-		   uint16_t  // nb points in cell
-		   > gaussianType;
-
-gaussianType getGaussian(const std::vector<double>& valuesVector,
-			 const std::vector<int>& validVector,
-			 const std::vector< CoordsList >& gridToInterpol,
-			 const std::vector<long int>& neighbors,
-			 const long int cellCol,
-			 const long int cellRow,
-			 const long int xSize,
-			 const long int ySize,
-			 const double sigma,
-			 const long int radius,
-			 const double resolution,
-			 const long int nbBands,
-			 const long int nbPoints)
+void getGaussian(const std::vector<double>& valuesVector,
+                 const std::vector<int>& validVector,
+                 const std::vector< CoordsList >& gridToInterpol,
+                 const std::vector<long int>& neighbors,
+                 const long int cellCol,
+                 const long int cellRow,
+                 const long int xSize,
+                 const long int ySize,
+                 const double sigma,
+                 const long int radius,
+                 const double resolution,
+                 const long int nbBands,
+                 const long int nbPoints,
+                 std::vector<double>& gaussian_interp,
+                 float& weightsSum,
+                 std::vector<double>& mean,
+                 std::vector<double>& stdev,
+                 uint16_t& nbPointsInDisc,
+                 uint16_t& nbPointsInCell)
 {
 
   // We take the coordinates at the center of the pixel
@@ -86,16 +83,12 @@ gaussianType getGaussian(const std::vector<double>& valuesVector,
                                     static_cast<double>(cellRow + 0.5f),
                                     -1.f };
   std::list < std::pair<double, Coords> > coordsList;
-  uint16_t nbPointsInCell = 0;
+  nbPointsInCell = 0;
   std::vector<long int> indexes;
   std::vector<double> weights; 
   // WDL-optim : Reverse vector of 16 -> avoid realloc
   weights.reserve(16);
   indexes.reserve(16);
-  std::vector<double> gaussian_interp(nbBands, std::numeric_limits<double>::quiet_NaN());
-  std::vector<double> mean(nbBands, std::numeric_limits<double>::quiet_NaN());
-  std::vector<double> stdev(nbBands, std::numeric_limits<double>::quiet_NaN());
-
   for(const auto neigh : neighbors){
     for(const auto& coords: gridToInterpol[neigh]){
       double dist = distance(cellCoordsCenter, coords);
@@ -120,14 +113,15 @@ gaussianType getGaussian(const std::vector<double>& valuesVector,
     }
   }
 
-  uint16_t nbPointsInDisc;
-  double weightsSum = 0;
+  weightsSum = 0;
 
   if (noValidNeighbor == false) {
     nbPointsInDisc = indexes.size();
-    weightsSum = std::accumulate(weights.begin(),
+    double weightsSumTemp = std::accumulate(weights.begin(),
 				 weights.end(),
 				 0.0);
+
+    weightsSum = weightsSumTemp;
 
     if(nbPointsInDisc > 0){
       std::vector<double> indexesValue(nbPointsInDisc);
@@ -143,7 +137,7 @@ gaussianType getGaussian(const std::vector<double>& valuesVector,
           indexesValueSum += value;
 	  gaussian_interp[band] += weight*value;
 	}
-	gaussian_interp[band] /= weightsSum;
+	gaussian_interp[band] /= weightsSumTemp;
         mean[band] = indexesValueSum/nbPointsInDisc;
 	stdev[band] = std::sqrt(vector_sumSquaredDiff(indexesValue, mean[band])/nbPointsInDisc);
       }
@@ -154,12 +148,6 @@ gaussianType getGaussian(const std::vector<double>& valuesVector,
     nbPointsInCell = 0;
     nbPointsInDisc = 0;
   }
-
-  return std::make_tuple(gaussian_interp,
-			 weightsSum,
-			 mean, stdev,
-			 nbPointsInDisc,
-			 nbPointsInCell);
 }
 
 std::vector<float> pointCloudToDSM(const std::vector<double>& pointsVector,
@@ -213,6 +201,9 @@ std::vector<float> pointCloudToDSM(const std::vector<double>& pointsVector,
   }
 
   std::vector<long int> neighbors;
+  std::vector<double> out(nbBands, std::numeric_limits<double>::quiet_NaN());
+  std::vector<double> mean(nbBands, std::numeric_limits<double>::quiet_NaN());
+  std::vector<double> stdev(nbBands, std::numeric_limits<double>::quiet_NaN());
 
   // Loop over the grid to interpolate the z for each cell
   for ( long int k = 0 ; k < outSize ; ++k ) {
@@ -232,34 +223,34 @@ std::vector<float> pointCloudToDSM(const std::vector<double>& pointsVector,
 
 
     // Gaussian interpolation
-    auto [out,
-	  weightsSum,
-	  mean,
-	  stdev,
-	  nbPointsInDisc,
-	  nbPointsInCell] = getGaussian(valuesVector,
-					validVector,
-					gridToInterpolWithMargins,
-					neighbors,
-					cellCol,
-					cellRow,
-					xSize,
-					ySize,
-					sigma,
-					radius,
-					resolution,
-					nbBands,
-					nbPoints);
+    getGaussian(valuesVector,
+		validVector,
+		gridToInterpolWithMargins,
+		neighbors,
+		cellCol,
+		cellRow,
+		xSize,
+		ySize,
+		sigma,
+		radius,
+		resolution,
+		nbBands,
+		nbPoints,
+    out,
+    weightsSumVector[k],
+    mean,
+    stdev,
+    nbPointsInDiscVector[k],
+    nbPointsInCellVector[k]);
 
     for( long int band = 0; band < nbBands ; ++band) {
       outputVector[k*nbBands+band] = out[band];
       meanVector[k*nbBands+band] = mean[band];
       stdevVector[k*nbBands+band] = stdev[band];
+      out[band]=std::numeric_limits<double>::quiet_NaN();
+      mean[band]=std::numeric_limits<double>::quiet_NaN();
+      stdev[band]=std::numeric_limits<double>::quiet_NaN();
     }
-
-    nbPointsInDiscVector[k] = nbPointsInDisc;
-    nbPointsInCellVector[k] = nbPointsInCell;
-    weightsSumVector[k] = weightsSum;
   }
 
   return outputVector;
