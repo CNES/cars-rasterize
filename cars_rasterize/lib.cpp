@@ -88,7 +88,10 @@ gaussianType getGaussian(const std::vector<double>& valuesVector,
   std::list < std::pair<double, Coords> > coordsList;
   uint16_t nbPointsInCell = 0;
   std::vector<long int> indexes;
-  std::vector<double> weights;
+  std::vector<double> weights; 
+  // WDL-optim : Reverse vector of 16 -> avoid realloc
+  weights.reserve(16);
+  indexes.reserve(16);
   std::vector<double> gaussian_interp(nbBands, std::numeric_limits<double>::quiet_NaN());
   std::vector<double> mean(nbBands, std::numeric_limits<double>::quiet_NaN());
   std::vector<double> stdev(nbBands, std::numeric_limits<double>::quiet_NaN());
