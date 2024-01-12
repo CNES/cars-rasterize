@@ -16,8 +16,8 @@
 using Coords = std::array<double, 3>;
 using CoordsList = std::list<Coords>;
 
-double distance( const Coords& coords1, 
-		 const Coords& coords2 ) 
+double distance( const Coords& coords1,
+		 const Coords& coords2 )
 {
   // Euclidean square root distance
   return sqrt( (coords1[0] - coords2[0]) * (coords1[0] - coords2[0]) +
@@ -42,7 +42,7 @@ std::vector<long int> getNeighboringCells(const long int cellCol,
 					  const long int ySize,
 					  const long int radius)
 {
-    
+
   std::vector<long int> neighboringCells;
 
   // window of 2 * radius + 1 centered on the current cell coordinates
@@ -62,6 +62,7 @@ std::vector<long int> getNeighboringCells(const long int cellCol,
 
 
 typedef std::tuple<std::vector<double>, // gaussian interpolation
+		   double, // sum of weights
 		   std::vector<double>, // mean
 		   std::vector<double>, // standard deviation
 		   uint16_t, // nb points in discus
@@ -90,24 +91,15 @@ gaussianType getGaussian(const std::vector<double>& valuesVector,
   std::list < std::pair<double, Coords> > coordsList;
   uint16_t nbPointsInCell = 0;
   std::vector<long int> indexes;
-  std::vector<double> weights; 
+  std::vector<double> weights;
   std::vector<double> gaussian_interp(nbBands, std::numeric_limits<double>::quiet_NaN());
   std::vector<double> mean(nbBands, std::numeric_limits<double>::quiet_NaN());
   std::vector<double> stdev(nbBands, std::numeric_limits<double>::quiet_NaN());
-
-  // allows retrocompatibility with cars: but it is a bug
-  double dist_min = std::numeric_limits<double>::max();
-  for(const auto neigh : neighbors){
-    for(const auto& coords: gridToInterpol[neigh]){
-      dist_min = std::min<double>(dist_min, distance(cellCoordsCenter, coords));
-    }
-  }
 
   for(const auto neigh : neighbors){
     for(const auto& coords: gridToInterpol[neigh]){
       double dist = distance(cellCoordsCenter, coords);
       if (dist < 0.5 + radius) {
-	dist -= dist_min;
 	dist *= resolution;
 	weights.push_back(exp( (- (dist * dist) / (2 * sigma * sigma) )));
 	indexes.push_back(coords[2]);
@@ -129,11 +121,13 @@ gaussianType getGaussian(const std::vector<double>& valuesVector,
   }
 
   uint16_t nbPointsInDisc;
+  double weightsSum = 0;
+
   if (noValidNeighbor == false) {
-    nbPointsInDisc = indexes.size(); 
-    double weightsSum = std::accumulate(weights.begin(),
-					weights.end(),
-					0.0);
+    nbPointsInDisc = indexes.size();
+    weightsSum = std::accumulate(weights.begin(),
+				 weights.end(),
+				 0.0);
 
     if(nbPointsInDisc > 0){
       for( long int band = 0; band < nbBands ; ++band) {
@@ -147,12 +141,13 @@ gaussianType getGaussian(const std::vector<double>& valuesVector,
 	  gaussian_interp[band] += weight*value;
 	}
 	gaussian_interp[band] /= weightsSum;
-	
+
 	auto [mean_, stdev_] = vector_statistics(indexesValue);
 	mean[band] = mean_;
 	stdev[band] = stdev_;
       }
     }
+
   }
   else {
     nbPointsInCell = 0;
@@ -160,6 +155,7 @@ gaussianType getGaussian(const std::vector<double>& valuesVector,
   }
 
   return std::make_tuple(gaussian_interp,
+			 weightsSum,
 			 mean, stdev,
 			 nbPointsInDisc,
 			 nbPointsInCell);
@@ -168,15 +164,16 @@ gaussianType getGaussian(const std::vector<double>& valuesVector,
 std::vector<float> pointCloudToDSM(const std::vector<double>& pointsVector,
 				   const std::vector<double>& valuesVector,
 				   const std::vector<int>& validVector,
-				   const long int nbBands, 
+				   const long int nbBands,
 				   const long int nbPoints,
-				   const double xStart, 
-				   const double yStart, 
+				   const double xStart,
+				   const double yStart,
 				   const long int xSize,
 				   const long int ySize,
 				   const double resolution,
 				   const long int radius,
 				   const double sigma,
+				   std::vector<float>& weightsSumVector,
 				   std::vector<float>& meanVector,
 				   std::vector<float>& stdevVector,
 				   std::vector<uint16_t>& nbPointsInDiscVector,
@@ -184,10 +181,11 @@ std::vector<float> pointCloudToDSM(const std::vector<double>& pointsVector,
 {
   const long int outSize = xSize*ySize;
   std::vector<float> outputVector(nbBands*outSize);
+  weightsSumVector.resize(outSize);
   meanVector.resize(nbBands*outSize);
   stdevVector.resize(nbBands*outSize);
-  nbPointsInDiscVector.resize(nbBands*outSize);
-  nbPointsInCellVector.resize(nbBands*outSize);
+  nbPointsInDiscVector.resize(outSize);
+  nbPointsInCellVector.resize(outSize);
 
   // For each target pixel, we store a list of fractional Z coordinates
   const long int outSizeWithMargins = (xSize+2*radius)*(ySize+2*radius);
@@ -225,9 +223,10 @@ std::vector<float> pointCloudToDSM(const std::vector<double>& pointsVector,
                                          xSize,
                                          ySize,
                                          radius);
-    
+
     // Gaussian interpolation
     auto [out,
+	  weightsSum,
 	  mean,
 	  stdev,
 	  nbPointsInDisc,
@@ -253,6 +252,7 @@ std::vector<float> pointCloudToDSM(const std::vector<double>& pointsVector,
 
     nbPointsInDiscVector[k] = nbPointsInDisc;
     nbPointsInCellVector[k] = nbPointsInCell;
+    weightsSumVector[k] = weightsSum;
   }
 
   return outputVector;
@@ -266,6 +266,7 @@ namespace py = pybind11;
 
 // wrap C++ function with NumPy array IO
 typedef std::tuple<py::array, // gaussian interpolation
+		   py::array, // sum of weights
 		   py::array, // mean
 		   py::array, // standard deviation
 		   py::array, // nb points in discus
@@ -311,7 +312,7 @@ pyPointCloudtoDSMType pyPointCloudToDSM(py::array_t<double,
     message = message + std::string("(") + std::to_string(valid.shape()[1]);
     message = message + std::string(" ~= ") + std::to_string(points.shape()[1]) + std::string(")");
     throw std::runtime_error(message);
-  }  
+  }
 
   size_t nbBands = values.shape()[0];
   size_t nbPoints = points.shape()[1];
@@ -332,6 +333,7 @@ pyPointCloudtoDSMType pyPointCloudToDSM(py::array_t<double,
   std::memcpy(valuesVector.data(),values.data(),values.size()*sizeof(double));
   std::memcpy(validVector.data(),valid.data(),valid.size()*sizeof(int));
 
+  std::vector<float> weightsSumVector;
   std::vector<float> meanVector;
   std::vector<float> stdevVector;
   std::vector<uint16_t> nbPointsInDiscVector;
@@ -350,6 +352,7 @@ pyPointCloudtoDSMType pyPointCloudToDSM(py::array_t<double,
 				      resolution,
 				      radius,
 				      sigma,
+				      weightsSumVector,
 				      meanVector,
 				      stdevVector,
 				      nbPointsInDiscVector,
@@ -361,11 +364,11 @@ pyPointCloudtoDSMType pyPointCloudToDSM(py::array_t<double,
   std::vector<size_t> strides = { nbBands*ySize*sizeof(float),
 				  nbBands*sizeof(float),
 				  sizeof(float)};
-  
+
   // return 2-D NumPy array, I think here it is ok since the expected argument is
   // a pointer so there is no copy
   auto out = py::array(py::buffer_info(outputVector.data(),
-				       sizeof(float), 
+				       sizeof(float),
 				       py::format_descriptor<float>::format(),
 				       ndim,
 				       shape,
@@ -373,43 +376,56 @@ pyPointCloudtoDSMType pyPointCloudToDSM(py::array_t<double,
 				       ));
 
   auto mean = py::array(py::buffer_info(meanVector.data(),
-					sizeof(float), 
+					sizeof(float),
 					py::format_descriptor<float>::format(),
-					ndim,  
+					ndim,
 					shape,
 					strides
 					));
 
   auto stdev = py::array(py::buffer_info(stdevVector.data(),
-					 sizeof(float), 
+					 sizeof(float),
 					 py::format_descriptor<float>::format(),
-					 ndim,  
+					 ndim,
 					 shape,
 					 strides
 					 ));
 
   ndim    = 2;
   shape   = { xSize, ySize };
+  strides = { ySize*sizeof(float),
+	      sizeof(float)};
+
+  auto weightsSum = py::array(py::buffer_info(weightsSumVector.data(),
+					      sizeof(float),
+					      py::format_descriptor<float>::format(),
+					      ndim,
+					      shape,
+					      strides
+					      ));
+
+  ndim    = 2;
+  shape   = { xSize, ySize };
   strides = { ySize*sizeof(uint16_t),
 	      sizeof(uint16_t)};
-  
+
   auto nbPointsInDisc = py::array(py::buffer_info(nbPointsInDiscVector.data(),
-						  sizeof(uint16_t), 
+						  sizeof(uint16_t),
 						  py::format_descriptor<uint16_t>::format(),
-						  ndim,  
+						  ndim,
 						  shape,
 						  strides
 						  ));
 
   auto nbPointsInCell = py::array(py::buffer_info(nbPointsInCellVector.data(),
-						  sizeof(uint16_t), 
+						  sizeof(uint16_t),
 						  py::format_descriptor<uint16_t>::format(),
-						  ndim,  
+						  ndim,
 						  shape,
 						  strides
 						  ));
 
-  return std::make_tuple(out, mean, stdev, nbPointsInDisc, nbPointsInCell);
+  return std::make_tuple(out, weightsSum, mean, stdev, nbPointsInDisc, nbPointsInCell);
 
 }
 

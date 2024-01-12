@@ -39,9 +39,10 @@ import rasterize
 def main(
     cloud_in,
     dsm_out,
+    weights_sum_out=None,
     clr_out=None,
     resolution=0.5,
-    radius=1,
+    radius=None,
     sigma=None,
     roi=None,
 ):
@@ -83,8 +84,11 @@ def main(
     if sigma is None:
         sigma = resolution
 
+    if radius is None:
+        radius = 2 * sigma / resolution
+
     # pylint: disable=c-extension-no-member
-    out, mean, stdev, nb_pts_in_disc, nb_pts_in_cell = rasterize.pc_to_dsm(
+    out, weights_sum, mean, stdev, nb_pts_in_disc, nb_pts_in_cell = rasterize.pc_to_dsm(
         points,
         values,
         valid,
@@ -102,6 +106,7 @@ def main(
     out = out.reshape(shape_out + (-1,))
     mean = mean.reshape(shape_out + (-1,))
     stdev = stdev.reshape(shape_out + (-1,))
+    weights_sum = weights_sum.reshape(shape_out)
     nb_pts_in_disc = nb_pts_in_disc.reshape(shape_out)
     nb_pts_in_cell = nb_pts_in_cell.reshape(shape_out)
 
@@ -121,6 +126,19 @@ def main(
 
     with rio.open(dsm_out, "w", **profile) as dst:
         dst.write(out[..., 0], 1)
+
+    if weights_sum_out is not None:
+        profile = DefaultGTiffProfile(
+            count=1,
+            dtype=out.dtype,
+            width=roi["xsize"],
+            height=roi["ysize"],
+            transform=transform,
+            nodata=np.nan,
+        )
+
+        with rio.open(weights_sum_out, "w", **profile) as dst:
+            dst.write(weights_sum, 1)
 
     if clr_out is not None:
         # clr: color r, g, b
@@ -146,6 +164,7 @@ def console_script():
     parser = argparse.ArgumentParser()
     parser.add_argument("cloud_in")
     parser.add_argument("dsm_out")
+    parser.add_argument("--weights_sum_out", default=None)
     parser.add_argument("--clr_out", default=None)
     parser.add_argument("--resolution", default=0.5, type=float)
     parser.add_argument("--radius", default=1, type=int)
@@ -171,6 +190,7 @@ def console_script():
     main(
         args.cloud_in,
         args.dsm_out,
+        weights_sum_out=args.weights_sum_out,
         clr_out=args.clr_out,
         resolution=args.resolution,
         radius=args.radius,
