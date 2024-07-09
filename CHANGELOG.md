@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1 Usage of float dsm radius (July 2024)
+
+### Changed
+
+- Use float dsm radius as parameter.
+
 ## 0.2.0 Add weights map (January 2024)
 
 ### Added

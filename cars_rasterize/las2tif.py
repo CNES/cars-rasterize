@@ -97,7 +97,7 @@ def main(
         int(roi["xsize"]),
         int(roi["ysize"]),
         resolution,
-        radius,
+        float(radius),
         sigma,
     )
 
