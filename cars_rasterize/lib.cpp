@@ -40,18 +40,18 @@ void  getNeighboringCells(std::vector<long int> & neighboringCells,
                           const long int cellRow,
                           const long int xSize,
                           const long int ySize,
-                          const long int radius)
+                          const double radius)
 {
     
   // window of 2 * radius + 1 centered on the current cell coordinates
-  long int minCol = std::max<long int>(-radius, cellCol - radius);
-  long int minRow = std::max<long int>(-radius, cellRow - radius);
-  long int maxCol = std::min<long int>((xSize-1)+radius, cellCol + radius);
-  long int maxRow = std::min<long int>((ySize-1)+radius, cellRow + radius);
+  long int minCol = std::max<long int>(-std::ceil(radius), cellCol - std::ceil(radius));
+  long int minRow = std::max<long int>(-std::ceil(radius), cellRow - std::ceil(radius));
+  long int maxCol = std::min<long int>((xSize-1)+std::ceil(radius), cellCol + std::ceil(radius));
+  long int maxRow = std::min<long int>((ySize-1)+std::ceil(radius), cellRow + std::ceil(radius));
 
   for(long int r = minRow; r <= maxRow; r++){
     for(long int c = minCol; c <= maxCol; c++){
-      neighboringCells.push_back( (r+radius) * (xSize+2*radius) + (c+radius) );
+      neighboringCells.push_back( (r+std::ceil(radius)) * (xSize+2*std::ceil(radius)) + (c+std::ceil(radius)) );
     }
   }
 
@@ -66,7 +66,7 @@ void getGaussian(const std::vector<double>& valuesVector,
                  const long int xSize,
                  const long int ySize,
                  const double sigma,
-                 const long int radius,
+                 const double radius,
                  const double resolution,
                  const long int nbBands,
                  const long int nbPoints,
@@ -160,7 +160,7 @@ std::vector<float> pointCloudToDSM(const std::vector<double>& pointsVector,
 				   const long int xSize,
 				   const long int ySize,
 				   const double resolution,
-				   const long int radius,
+				   const double radius,
 				   const double sigma,
 				   std::vector<float>& weightsSumVector,
 				   std::vector<float>& meanVector,
@@ -177,7 +177,7 @@ std::vector<float> pointCloudToDSM(const std::vector<double>& pointsVector,
   nbPointsInCellVector.resize(outSize);
 
   // For each target pixel, we store a list of fractional Z coordinates
-  const long int outSizeWithMargins = (xSize+2*radius)*(ySize+2*radius);
+  const long int outSizeWithMargins = (xSize+2*std::ceil(radius))*(ySize+2*std::ceil(radius));
   std::vector< CoordsList > gridToInterpolWithMargins(outSizeWithMargins);
   double x, y, col, row;
   long int cellCol, cellRow, rowByCol;
@@ -193,9 +193,9 @@ std::vector<float> pointCloudToDSM(const std::vector<double>& pointsVector,
     cellCol = floor(col);
     cellRow = floor(row);
 
-    if ((cellCol >= -radius) && (cellCol < xSize+radius) \
-	&& (cellRow >= -radius) && (cellRow < ySize+radius)) {
-      rowByCol = (cellCol+radius) + (cellRow+radius) * (xSize+2*radius);
+    if ((cellCol >= -radius) && (cellCol < xSize+radius) 
+        && (cellRow >= -radius) && (cellRow < ySize+radius)) {
+      rowByCol = (cellCol+std::ceil(radius)) + (cellRow+std::ceil(radius)) * (xSize+2*std::ceil(radius));
       gridToInterpolWithMargins[rowByCol].emplace_back(Coords{col, row, static_cast<double> (k)});
     }
   }
@@ -282,7 +282,7 @@ pyPointCloudtoDSMType pyPointCloudToDSM(py::array_t<double,
 					size_t xSize,
 					size_t ySize,
 					double resolution,
-					size_t radius,
+					double radius,
 					double sigma)
 {
   // check input dimensions
