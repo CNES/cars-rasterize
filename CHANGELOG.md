@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.2 Optimization by WeDoLow with no change in results
+## 0.2.2 Optimization by WeDoLow with no change in results (September 2024)
 
 ### Optimized
 
