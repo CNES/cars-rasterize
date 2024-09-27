@@ -1,5 +1,17 @@
 <div align="center">
-  <a href="https://github.com/CNES/cars"><img src="https://raw.githubusercontent.com/CNES/cars-rasterize/master/docs/images/picto_transparent.png" alt="CARS" title="CARS"  width="20%"></a>
+<a target="_blank" href="https://github.com/CNES/cars">
+<picture>
+  <source
+    srcset="https://raw.githubusercontent.com/CNES/cars/master/docs/source/images/picto_dark.png"
+    media="(prefers-color-scheme: dark)"
+  />
+  <img
+    src="https://raw.githubusercontent.com/CNES/cars/master/docs/source/images/picto_light.png"
+    alt="CARS"
+    width="40%"
+  />
+</picture>
+</a>
 
 <h4>cars-rasterize</h4>
 
