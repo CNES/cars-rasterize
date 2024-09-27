@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.2 Optimization by WeDoLow with no change in results
+
+### Optimized
+
+- Optimize C library with no change in results
+
 ## 0.2.1 Usage of float dsm radius (July 2024)
 
 ### Changed
