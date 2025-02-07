@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.3 Cross-platforms wheels
+
+ - Add wheels in PyPI package for Windows, MacOS and Ubuntu
+
 ## 0.2.2 Optimization by WeDoLow with no change in results (September 2024)
 
 ### Optimized
