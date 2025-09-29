@@ -4,7 +4,6 @@
 #include <iostream>
 #include <vector>
 #include <array>
-#include <list>
 #include <cmath>
 #include <algorithm>
 #include <limits>
@@ -14,7 +13,7 @@
 // -------------
 
 using Coords = std::array<double, 3>;
-using CoordsList = std::list<Coords>;
+using CoordsVector = std::vector<Coords>;
 
 double distance( const Coords& coords1,
 		 const Coords& coords2 )
@@ -59,7 +58,7 @@ void  getNeighboringCells(std::vector<long int> & neighboringCells,
 
 void getGaussian(const std::vector<double>& valuesVector,
                  const std::vector<int>& validVector,
-                 const std::vector< CoordsList >& gridToInterpol,
+                 const std::vector< CoordsVector >& gridToInterpol,
                  const std::vector<long int>& neighbors,
                  const long int cellCol,
                  const long int cellRow,
@@ -82,7 +81,6 @@ void getGaussian(const std::vector<double>& valuesVector,
   Coords cellCoordsCenter = Coords{ static_cast<double>(cellCol + 0.5f),
                                     static_cast<double>(cellRow + 0.5f),
                                     -1.f };
-  std::list < std::pair<double, Coords> > coordsList;
   nbPointsInCell = 0;
   std::vector<long int> indexes;
   std::vector<double> weights; 
@@ -176,9 +174,9 @@ std::vector<float> pointCloudToDSM(const std::vector<double>& pointsVector,
   nbPointsInDiscVector.resize(outSize);
   nbPointsInCellVector.resize(outSize);
 
-  // For each target pixel, we store a list of fractional Z coordinates
+  // For each target pixel, we store a vector of fractional Z coordinates
   const long int outSizeWithMargins = (xSize+2*std::ceil(radius))*(ySize+2*std::ceil(radius));
-  std::vector< CoordsList > gridToInterpolWithMargins(outSizeWithMargins);
+  std::vector<CoordsVector> gridToInterpolWithMargins(outSizeWithMargins);
   double x, y, col, row;
   long int cellCol, cellRow, rowByCol;
 
