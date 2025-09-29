@@ -13,6 +13,19 @@
 // pure C++ code
 // -------------
 
+// Polynomial approximation of exp(x)
+static float wedolow_std_exp_approxPoly_0(float x) {
+  float res = 1.50842802e-05f;
+  res = res * x + 4.02179013e-04f;
+  res = res * x + 4.76919449e-03f;
+  res = res * x + 3.35024063e-02f;
+  res = res * x + 1.55574011e-01f;
+  res = res * x + 4.92040505e-01f;
+  res = res * x + 9.97651397e-01f;
+  res = res * x + 9.99873953e-01f;
+  return res;
+}
+
 std::vector<float> pointCloudToDSM(const double* pointsVector,
 				   const double* valuesVector,
 				   const int* validVector,
@@ -90,7 +103,7 @@ std::vector<float> pointCloudToDSM(const double* pointsVector,
                           (pointRow - neighRowCenter) * (pointRow - neighRowCenter) );
         if (distSq < radiusSq) {
           // Compute weight
-          double weight = exp(distSq * resSigFactor);
+          double weight = wedolow_std_exp_approxPoly_0(distSq * resSigFactor);
           weightsSumVector[neighIdx] += weight;
           // Count points in cell and in disc
           nbPointsInDiscVector[neighIdx]++;
