@@ -13,9 +13,9 @@
 // pure C++ code
 // -------------
 
-std::vector<float> pointCloudToDSM(const std::vector<double>& pointsVector,
-				   const std::vector<double>& valuesVector,
-				   const std::vector<int>& validVector,
+std::vector<float> pointCloudToDSM(const double* pointsVector,
+				   const double* valuesVector,
+				   const int* validVector,
 				   const long int nbBands,
 				   const long int nbPoints,
 				   const double xStart,
@@ -225,20 +225,9 @@ pyPointCloudtoDSMType pyPointCloudToDSM(py::array_t<double,
   size_t nbPoints = points.shape()[1];
 
   // allocate std::vector (to pass to the C++ function)
-  std::vector<double> pointsVector(points.size());
-  std::vector<double> valuesVector(values.size());
-  std::vector<int> validVector(valid.size());
-
-  // copy py::array -> std::vector
-  // Do we need to make a copy here ? Is there something similar
-  // to cython memory view
-  // https://stackoverflow.com/questions/54793539/pybind11-modify-numpy-array-from-c
-  // It seems that passing the py::array by reference should do the job if
-  // there is not conflicting type, however the function pointCloudToDSM needs a double * ptr as
-  // input instead of a std::vector.
-  std::memcpy(pointsVector.data(),points.data(),points.size()*sizeof(double));
-  std::memcpy(valuesVector.data(),values.data(),values.size()*sizeof(double));
-  std::memcpy(validVector.data(),valid.data(),valid.size()*sizeof(int));
+  const double* pointsPtr = points.data();
+  const double* valuesPtr = values.data();
+  const int* validPtr = valid.data();
 
   std::vector<float> weightsSumVector;
   std::vector<float> meanVector;
@@ -247,9 +236,9 @@ pyPointCloudtoDSMType pyPointCloudToDSM(py::array_t<double,
   std::vector<uint16_t> nbPointsInCellVector;
 
   // call pure C++ function
-  auto outputVector = pointCloudToDSM(pointsVector,
-				      valuesVector,
-				      validVector,
+  auto outputVector = pointCloudToDSM(pointsPtr,
+				      valuesPtr,
+				      validPtr,
 				      nbBands,
 				      nbPoints,
 				      xStart,
