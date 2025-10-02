@@ -12,17 +12,6 @@
 // pure C++ code
 // -------------
 
-using Coords = std::array<double, 3>;
-using CoordsVector = std::vector<Coords>;
-
-double distance( const Coords& coords1,
-		 const Coords& coords2 )
-{
-  // Euclidean square root distance
-  return sqrt( (coords1[0] - coords2[0]) * (coords1[0] - coords2[0]) +
-               (coords1[1] - coords2[1]) * (coords1[1] - coords2[1]) );
-}
-
 std::vector<float> pointCloudToDSM(const std::vector<double>& pointsVector,
 				   const std::vector<double>& valuesVector,
 				   const std::vector<int>& validVector,
@@ -59,10 +48,17 @@ std::vector<float> pointCloudToDSM(const std::vector<double>& pointsVector,
   // Internal computation vectors for weighted sum and variance (Welford's algorithm)
   // This allow to perform only one pass over the points
   std::vector<double> bandSumWeighted(outSize*nbBands); 
-  std::vector<double> bandM2(outSize*nbBands);          
+  std::vector<double> bandM2(outSize*nbBands);         
+  
+  // Pre-compute constants
+  const double radiusSq =  (0.5 + radius) * (0.5 + radius);
+  const double resolutionSq = resolution * resolution;
+  const double sigmaSq2 = - 2 * sigma * sigma; 
+  const double resSigFactor = resolutionSq / sigmaSq2;
 
-  // For each target pixel, we update the stats data in all neighboorg that it apply.
+  // For each target pixel, we update the internal vectors in all neighboring pixels that it applies.
   for ( long int pointIdx = 0 ; pointIdx < nbPoints ; ++pointIdx ) {
+    // Verify if the point is valid
     if(validVector[pointIdx] == 0) {
       continue;
     }
@@ -89,18 +85,20 @@ std::vector<float> pointCloudToDSM(const std::vector<double>& pointsVector,
         double neighColCenter = static_cast<double>(neighCol) + 0.5;
         double neighRowCenter = static_cast<double>(neighRow) + 0.5;
 
-        double dist = (std::sqrt( (pointCol - neighColCenter) * (pointCol - neighColCenter) +
-                                  (pointRow - neighRowCenter) * (pointRow - neighRowCenter) ));
-        if (dist < 0.5 + radius) {
-          dist *= resolution;
-          double weight = exp( (- (dist * dist) / (2 * sigma * sigma) ));
+        double distSq = ( (pointCol - neighColCenter) * (pointCol - neighColCenter) +
+                          (pointRow - neighRowCenter) * (pointRow - neighRowCenter) );
+        if (distSq < radiusSq) {
+          // Compute weight
+          double weight = exp(distSq * resSigFactor);
           weightsSumVector[neighIdx] += weight;
-          if ((std::abs(neighColCenter - (pointCol)) < 0.5f) &&
-              (std::abs(neighRowCenter - (pointRow)) < 0.5f)) {
+          // Count points in cell and in disc
+          nbPointsInDiscVector[neighIdx]++;
+          if ((std::abs(neighColCenter - (pointCol)) < 0.5) &&
+              (std::abs(neighRowCenter - (pointRow)) < 0.5)) {
             nbPointsInCellVector[neighIdx]++;
           }
-          nbPointsInDiscVector[neighIdx]++;
           
+          // Compute mean and variance (Welford's algorithm)
           for( long int band = 0; band < nbBands ; ++band) {
             const long int bandIdx = neighIdx * nbBands + band;
             double value = valuesVector[band*nbPoints+pointIdx];
@@ -117,7 +115,7 @@ std::vector<float> pointCloudToDSM(const std::vector<double>& pointsVector,
 
   // Iterate over all output pixel to fill output
   for ( long int k = 0 ; k < outSize ; ++k ) {
-    // Test if there is no point
+    // Test if there is no point, if so fill with NaN
     if (nbPointsInDiscVector[k] == 0) {
       for (long int band = 0; band < nbBands; ++band) {
         outputVector[k * nbBands + band] = std::numeric_limits<float>::quiet_NaN();
