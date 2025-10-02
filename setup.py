@@ -28,7 +28,11 @@ from setuptools import setup
 
 try:
     ext_modules = [
-        Pybind11Extension("rasterize", ["cars_rasterize/lib.cpp"]),
+        Pybind11Extension(
+            "rasterize",
+            ["cars_rasterize/lib.cpp"],
+            extra_compile_args=["-mavx2"],
+        ),
     ]
 
     setup(

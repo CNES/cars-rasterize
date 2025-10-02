@@ -7,6 +7,7 @@
 #include <cmath>
 #include <algorithm>
 #include <limits>
+#include <immintrin.h>  // AVX2 intrinsics
 
 // -------------
 // pure C++ code
@@ -125,14 +126,40 @@ std::vector<float> pointCloudToDSM(const std::vector<double>& pointsVector,
       continue;
     }
 
-    // Fill expected data
-    //   weightsSumVector[k] already set
-    //   nbPointsInDiscVector[k] already set
-    //   nbPointsInCellVector[k] already set
-    for (long int band = 0; band < nbBands; ++band) {
-      outputVector[k * nbBands + band] = bandSumWeighted[k * nbBands + band] / weightsSumVector[k];
-      // meanVector[k * nbBands + band] already set
-      stdevVector[k * nbBands + band] = std::sqrt(bandM2[k * nbBands + band] / nbPointsInDiscVector[k]);
+    // Fill expected data using AVX2 vectorization when possible
+    const float weightsSum = weightsSumVector[k];
+    const float nbPointsInDisc = static_cast<float>(nbPointsInDiscVector[k]);
+    const __m128 weightsSum_vec = _mm_set1_ps(weightsSum);
+    const __m128 nbPointsInDisc_vec = _mm_set1_ps(nbPointsInDisc);
+    
+    long int band = 0;
+    // Process 4 bands at a time with SSE/AVX
+    for (; band + 3 < nbBands; band += 4) {
+      const long int baseIdx = k * nbBands + band;
+      
+      // Load 4 bandSumWeighted values and convert from double to float
+      __m256d bandSumWeighted_d = _mm256_loadu_pd(&bandSumWeighted[baseIdx]);
+      __m128 bandSumWeighted_vec = _mm256_cvtpd_ps(bandSumWeighted_d);
+      
+      // Load 4 bandM2 values and convert from double to float  
+      __m256d bandM2_d = _mm256_loadu_pd(&bandM2[baseIdx]);
+      __m128 bandM2_vec = _mm256_cvtpd_ps(bandM2_d);
+      
+      // Compute outputVector: bandSumWeighted / weightsSum
+      __m128 output_vec = _mm_div_ps(bandSumWeighted_vec, weightsSum_vec);
+      _mm_storeu_ps(&outputVector[baseIdx], output_vec);
+      
+      // Compute stdevVector: sqrt(bandM2 / nbPointsInDisc)
+      __m128 variance_vec = _mm_div_ps(bandM2_vec, nbPointsInDisc_vec);
+      __m128 stdev_vec = _mm_sqrt_ps(variance_vec);
+      _mm_storeu_ps(&stdevVector[baseIdx], stdev_vec);
+    }
+    
+    // Handle remaining bands (scalar fallback)
+    for (; band < nbBands; ++band) {
+      const long int bandIdx = k * nbBands + band;
+      outputVector[bandIdx] = static_cast<float>(bandSumWeighted[bandIdx]) / weightsSum;
+      stdevVector[bandIdx] = std::sqrt(static_cast<float>(bandM2[bandIdx]) / nbPointsInDisc);
     }
   }
   return outputVector;
