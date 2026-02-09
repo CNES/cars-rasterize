@@ -1,14 +1,10 @@
 <div align="center">
 <a target="_blank" href="https://github.com/CNES/cars">
 <picture>
-  <source
-    srcset="https://raw.githubusercontent.com/CNES/cars/master/docs/source/images/picto_dark.png"
-    media="(prefers-color-scheme: dark)"
-  />
   <img
-    src="https://raw.githubusercontent.com/CNES/cars/master/docs/source/images/picto_light.png"
+    src="https://raw.githubusercontent.com/CNES/cars/master/docs/source/images/cars_picto.svg"
     alt="CARS"
-    width="40%"
+    width="50%"
   />
 </picture>
 </a>
