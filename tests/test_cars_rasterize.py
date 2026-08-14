@@ -38,13 +38,13 @@ def synthetic_cloud() -> Dict[str, Any]:
         "ystart": 0.0,
         "xsize": 2,
         "ysize": 2,
-        "resolution": 1.0,
+        "resolution": [1.0, 1.0],
     }  # type: Dict[str, Any]
 
-    x = np.arange(cloud["xsize"]) * cloud["resolution"]
-    x += cloud["xstart"] + cloud["resolution"] / 2
-    y = np.arange(cloud["ysize"]) * -cloud["resolution"]
-    y -= cloud["ystart"] + cloud["resolution"] / 2
+    x = np.arange(cloud["xsize"]) * cloud["resolution"][0]
+    x += cloud["xstart"] + cloud["resolution"][0] / 2
+    y = np.arange(cloud["ysize"]) * -cloud["resolution"][1]
+    y -= cloud["ystart"] + cloud["resolution"][1] / 2
     xgrid, ygrid = np.meshgrid(x, y)
 
     cloud["points"] = np.vstack((xgrid.ravel(), ygrid.ravel()))
@@ -59,17 +59,19 @@ def test_synthetic(
     synthetic_cloud, radius, sigma
 ):  # pylint: disable=redefined-outer-name
     """Test on synthetic points cloud."""
-    out, mean, stdev, nb_pts_in_disc, nb_pts_in_cell = rasterize.pc_to_dsm(
-        synthetic_cloud["points"],
-        synthetic_cloud["values"],
-        synthetic_cloud["valid"],
-        synthetic_cloud["xstart"],
-        synthetic_cloud["ystart"],
-        synthetic_cloud["xsize"],
-        synthetic_cloud["ysize"],
-        synthetic_cloud["resolution"],
-        radius,
-        sigma,
+    out, weights_sum, mean, stdev, nb_pts_in_disc, nb_pts_in_cell = (
+        rasterize.pc_to_dsm(
+            synthetic_cloud["points"],
+            synthetic_cloud["values"],
+            synthetic_cloud["valid"],
+            synthetic_cloud["xstart"],
+            synthetic_cloud["ystart"],
+            synthetic_cloud["xsize"],
+            synthetic_cloud["ysize"],
+            synthetic_cloud["resolution"],
+            radius,
+            sigma,
+        )
     )
 
     if radius == 0:
