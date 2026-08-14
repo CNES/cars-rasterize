@@ -67,7 +67,7 @@ void getGaussian(const std::vector<double>& valuesVector,
                  const long int ySize,
                  const double sigma,
                  const double radius,
-                 const double resolution,
+                 const std::pair<double, double> resolution,
                  const long int nbBands,
                  const long int nbPoints,
                  std::vector<double>& gaussian_interp,
@@ -91,16 +91,19 @@ void getGaussian(const std::vector<double>& valuesVector,
   indexes.reserve(16);
   for(const auto neigh : neighbors){
     for(const auto& coords: gridToInterpol[neigh]){
-      double dist = distance(cellCoordsCenter, coords);
-      if (dist < 0.5 + radius) {
-	dist *= resolution;
-	weights.push_back(exp( (- (dist * dist) / (2 * sigma * sigma) )));
-	indexes.push_back(coords[2]);
+      double dist_px = distance(cellCoordsCenter, coords);
+      if (dist_px < 0.5 + radius) {
+        double dx = (cellCoordsCenter[0] - coords[0]) * resolution.first;
+        double dy = (cellCoordsCenter[1] - coords[1]) * resolution.second;
 
-	if ((std::abs(coords[0] - (cellCol + 0.5f)) < 0.5f) &&
-	    (std::abs(coords[1] - (cellRow + 0.5f)) < 0.5f)) {
-	  nbPointsInCell++;
-	}
+        double dist_meter = sqrt(dx * dx + dy * dy);
+	    weights.push_back(exp( (- (dist_meter * dist_meter) / (2 * sigma * sigma) )));
+	    indexes.push_back(coords[2]);
+
+	    if ((std::abs(coords[0] - (cellCol + 0.5f)) < 0.5f) &&
+	        (std::abs(coords[1] - (cellRow + 0.5f)) < 0.5f)) {
+	        nbPointsInCell++;
+	    }
       }
     }
   }
@@ -159,7 +162,7 @@ std::vector<float> pointCloudToDSM(const std::vector<double>& pointsVector,
 				   const double yStart,
 				   const long int xSize,
 				   const long int ySize,
-				   const double resolution,
+				   const std::pair<double, double> resolution,
 				   const double radius,
 				   const double sigma,
 				   std::vector<float>& weightsSumVector,
@@ -187,8 +190,8 @@ std::vector<float> pointCloudToDSM(const std::vector<double>& pointsVector,
     x = pointsVector[(0*nbPoints)+k];
     y = pointsVector[(1*nbPoints)+k];
 
-    col = (x - xStart) / resolution;
-    row = (yStart - y) / resolution;
+    col = (x - xStart) / resolution.first;
+    row = (yStart - y) / resolution.second;
 
     cellCol = floor(col);
     cellRow = floor(row);
@@ -281,7 +284,7 @@ pyPointCloudtoDSMType pyPointCloudToDSM(py::array_t<double,
 					double yStart,
 					size_t xSize,
 					size_t ySize,
-					double resolution,
+					std::pair<double, double> resolution,
 					double radius,
 					double sigma)
 {

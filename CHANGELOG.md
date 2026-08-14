@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0 Resolution is now a tuple
+
+### Changed
+
+ - Support different x and y resolutions.
+
 ## 0.2.3 Cross-platforms wheels (February 2025)
 
 ### Added
