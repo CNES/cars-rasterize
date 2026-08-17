@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0 Resolution is now a tuple
+## 0.3.0 Resolution is now a tuple (August 2026)
 
 ### Changed
 
